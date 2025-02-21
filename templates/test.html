@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ECharts Drag to Select Area</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.0/dist/echarts.min.js"></script>
+    <style>
+        #main {
+            width: 800px;
+            height: 500px;
+            margin: auto;
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+
+    <h2 style="text-align: center;">ECharts - Drag to Draw Selection</h2>
+    <div id="main"></div>
+
+    <script>
+        var chart = echarts.init(document.getElementById('main'));
+
+        var startX, startY, isDrawing = false;
+        var rect = null;
+        var graphicElements = [];
+
+        var option = {
+            xAxis: { type: 'value', min: 0, max: 100 },
+            yAxis: { type: 'value', min: 0, max: 100 },
+            series: [{
+                type: 'scatter',
+                data: [[10, 10], [20, 30], [30, 50], [40, 60], [50, 80]]
+            }],
+            graphic: []  // 初始没有图形
+        };
+
+        chart.setOption(option);
+
+        // 监听鼠标按下事件（开始绘制）
+        chart.getZr().on('mousedown', function (event) {
+            if (event.event.button !== 0) return; // 只允许左键拖拽
+            isDrawing = true;
+            startX = event.offsetX;
+            startY = event.offsetY;
+
+            rect = {
+                type: 'rect',
+                shape: { x: startX, y: startY, width: 0, height: 0 },
+                style: { fill: 'rgba(0, 128, 255, 0.3)', stroke: 'blue' },
+                draggable: true,
+                ondrag: function (dx, dy) {
+                    this.shape.x += dx;
+                    this.shape.y += dy;
+                    chart.setOption({ graphic: graphicElements });
+                }
+            };
+
+            graphicElements.push(rect);
+            chart.setOption({ graphic: graphicElements });
+        });
+
+        // 监听鼠标移动事件（动态调整矩形大小）
+        chart.getZr().on('mousemove', function (event) {
+            if (!isDrawing || !rect) return;
+
+            let width = event.offsetX - startX;
+            let height = event.offsetY - startY;
+
+            rect.shape.width = width;
+            rect.shape.height = height;
+
+            chart.setOption({ graphic: graphicElements });
+        });
+
+        // 监听鼠标松开事件（结束绘制）
+        chart.getZr().on('mouseup', function () {
+            isDrawing = false;
+        });
+
+    </script>
+
+</body>
+</html>

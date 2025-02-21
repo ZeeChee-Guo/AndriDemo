@@ -1,0 +1,1173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dual ECharts with Split Panel</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
+    <style>
+        body {
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container-fluid {
+            display: flex;
+            height: 100vh;
+        }
+
+        .charts-wrapper {
+            width: 70%;
+            display: flex;
+            flex-direction: column;
+            padding: 0.3%;
+        }
+
+        .chart-container1 {
+            height: 35%; /* Fixed height for chart1 */
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 1vh;
+        }
+
+        .chart-container2 {
+            flex-grow: 1; /* Takes remaining space */
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .panel-container {
+            width: 30%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            padding: 0.3%;
+        }
+
+        .panel-section {
+            height: 35%; /* Fixed height for the first panel-section */
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 1vh;
+            display: flex;
+            flex-direction: column;
+            overflow: auto;
+        }
+
+        .panel-section:last-child {
+            flex-grow: 1; /* Takes remaining space, aligning with chart2 */
+            height: auto; /* Allow it to expand */
+            margin-bottom: 0; /* Remove margin to ensure flush alignment */
+        }
+
+        /* Context menu styling ... (unchanged) */
+        #contextMenu {
+            display: none;
+            position: absolute;
+            z-index: 9999;
+            background: #fff;
+            border: 1px solid #ccc;
+            min-width: 140px;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
+        }
+
+        #contextMenu ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        #contextMenu li {
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+
+        #contextMenu li:hover {
+            background: #f1f1f1;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid">
+    <!-- Charts Section -->
+    <div class="charts-wrapper">
+        <div id="chart1" class="chart-container1"></div>
+        <div id="chart2" class="chart-container2"></div>
+    </div>
+
+    <!-- Right Panel Section -->
+    <div class="panel-container">
+        <div class="panel-section">
+            <div class="d-flex align-items-center gap-2 p-2">
+                <label for="fileInput" class="form-label fw-semibold my-auto" style="white-space: nowrap;">
+                    Upload Dataset File:
+                </label>
+                <input type="file" class="form-control flex-grow-1" id="fileInput" accept=".csv, .arff">
+            </div>
+
+
+            <div id="datasetStats" class="card p-2 mt-1 d-none w-100">
+                <div class="card-body p-2">
+                    <div class="d-flex justify-content-between">
+                        <div><strong>Total:</strong> <span class="text-success" id="totalRecords">0</span></div>
+                        <div><strong>TrainingSet:</strong> <span class="text-primary" id="trainingSetRecords">0</span>
+                        </div>
+                        <div><strong>Anomalies:</strong> <span class="text-danger" id="anomalyCount">0</span></div>
+                    </div>
+                </div>
+            </div>
+
+
+            <div id="trainDatasetStats" class="card p-1 mt-2 d-none w-100">
+                <div class="card-body p-1">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong id="trainingSetLabel">Training Set1:</strong>
+                        </div>
+                        <div>
+                            <label for="currentTrainingSetStart"><strong>Start:</strong></label>
+                            <input type="number" id="currentTrainingSetStart" class="form-control" min="0"
+                                   style="width: 100px; display: inline-block;" value="0">
+                        </div>
+                        <div>
+                            <label for="currentTrainingSetEnd"><strong>End:</strong></label>
+                            <input type="number" id="currentTrainingSetEnd" class="form-control" max="10000000"
+                                   style="width: 100px; display: inline-block;">
+                        </div>
+                        <button class="btn btn-primary btn-sm ms-2" id="confirmButton">Confirm</button>
+                    </div>
+                </div>
+            </div>
+
+
+            <div class="d-flex gap-2 p-1 w-100 d-none mt-1" id="finshSelectTrainingSet">
+                <button id="finshSelectTrainingSetBtn" class="btn btn-outline-success btn-sm w-50"
+                        style="box-shadow: 0 0 8px rgba(40, 167, 69, 0.5);">
+                    Finish Select Training Set(s)
+                </button>
+
+            </div>
+            <div class="d-flex gap-2 p-1 w-100 d-none mt-1" id="revertToSelectTrainingSet">
+                <button id="revertToSelectTrainingSetBtn" class="btn btn-outline-danger btn-sm w-50"
+                        style="box-shadow: 0 0 8px rgba(220, 53, 69, 0.5);">
+                    Revert to Select Training Set(s)
+                </button>
+
+            </div>
+        </div>
+
+        <div class="panel-section" id="panelSection">
+            <div class="d-flex gap-2 p-1 w-100 mt-2">
+                <button id="addTrainingSet" class="btn btn-outline-secondary btn-sm w-50 d-none">Add New Training Set
+                </button>
+                <button id="removeTrainingSet" class="btn btn-outline-secondary btn-sm w-50 d-none">Remove Last
+                    Training
+                    Set
+                </button>
+            </div>
+            <!-- Section 1: Manual Marking -->
+            <div class="p-2 mb-1 bg-light border rounded small d-none" id="manualMarkingSection">
+                <p class="text-muted text-center mb-1"><strong>Manual Marking: </strong>Right-click to mark at least one
+                    point, then click "Auto Detect" to identify anomalies automatically.</p>
+                <div class="text-center">
+                    <button id="autoDetectBtn" class="btn btn-outline-primary btn-sm" disabled>Auto Detect</button>
+                </div>
+            </div>
+
+            <!-- Section 2: Threshold-Based Marking -->
+            <div class="p-2 border rounded small d-none" id="thresholdMarkingSection">
+                <p class="text-muted mb-2"><strong>Threshold-Based Marking: </strong>
+                    Points are classified as anomalies if it falls outside the range [lower bound, upper bound],
+                    inclusive.
+                </p>
+
+                <div class="d-flex align-items-center mb-2">
+                    <label for="anomalyUpperBound" class="form-label mb-0 me-2">Upper Bound:</label>
+                    <input type="number" class="form-control form-control-sm me-3" id="anomalyUpperBound"
+                           placeholder="Enter upper bound" step="0.001">
+                    <label for="anomalyLowerBound" class="form-label mb-0 me-2">Lower Bound:</label>
+                    <input type="number" class="form-control form-control-sm" id="anomalyLowerBound"
+                           placeholder="Enter lower bound" step="0.001">
+                </div>
+
+                <!-- Select Button -->
+                <div class="text-center">
+                    <button id="selectAnomaliesPanelBtn" class="btn btn-outline-primary btn-sm"
+                            onclick="thresholdSelect()">Apply
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- Custom Right-Click Context Menu -->
+<div id="contextMenu">
+    <ul id="contextMenuList">
+        <li data-anomaly="point">Mark as Point Anomaly</li>
+        <li data-anomaly="normal">Mark as Normal</li>
+    </ul>
+</div>
+
+
+<!-- Auto detect modal -->
+<div class="modal fade" id="autoDetectAnomaliesModal" tabindex="-1" aria-labelledby="autoDetectAnomaliesModalLabel"
+     aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="autoDetectAnomaliesModalLabel">Auto Detect Anomalies</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body">
+                <!-- Auto-Tune Section -->
+                <div class="p-3 mb-3 rounded" style="background-color: #f8f9fa;">
+                    <p class="mb-2 text-center">The model automatically tunes hyperparameters based on your labeled
+                        anomalies, and this approach is recommended.</p>
+                    <div class="text-center">
+                        <button id="optimizeHyperparametersBtn" class="btn btn-success">Auto-Tune Hyperparameters
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Detection Method Selection -->
+                <div class="p-3 border rounded mb-3">
+                    <label for="anomalyMethod" class="form-label">Detection Method:</label>
+                    <select class="form-select" id="anomalyMethod">
+                        <option value="iforest" data-url="{{ url_for('detect_anomalies.i_forest') }}" selected>
+                            Isolation Forest (IForest)
+                        </option>
+                        <option value="lof" data-url="{{ url_for('detect_anomalies.lof') }}">Local Outlier Factor
+                            (LOF)
+                        </option>
+                    </select>
+                </div>
+
+                <!-- IForest Parameters Section (Default Visible) -->
+                <div id="iforestParameters" class="p-3 border rounded">
+                    <div class="row">
+                        <div class="col">
+                            <label for="nEstimators" class="form-label">Trees (n_estimators):</label>
+                            <input type="number" class="form-control" id="nEstimators" value="100" min="1">
+                        </div>
+                        <div class="col">
+                            <label for="maxSamples" class="form-label">Max Samples:</label>
+                            <input type="number" class="form-control" id="maxSamples" value="256" min="1">
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col">
+                            <label for="contaminationIf" class="form-label">Contamination:</label>
+                            <input type="number" class="form-control" id="contaminationIf" value="0.1" step="0.001"
+                                   min="0.001" max="0.5">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- LOF Parameters Section (Hidden by Default) -->
+                <div id="lofParameters" class="p-3 border rounded" style="display: none;">
+                    <div class="row">
+                        <div class="col">
+                            <label for="nNeighbors" class="form-label">Neighbors (n_neighbors):</label>
+                            <input type="number" class="form-control" id="nNeighbors" value="20" min="1">
+                        </div>
+                        <div class="col">
+                            <label for="contamination" class="form-label">Contamination:</label>
+                            <input type="number" class="form-control" id="contamination" value="0.1" step="0.001"
+                                   min="0.001" max="0.5">
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col">
+                            <label for="metric" class="form-label">Distance Metric:</label>
+                            <select class="form-select" id="metric">
+                                <option value="euclidean" selected>Euclidean</option>
+                                <option value="manhattan">Manhattan</option>
+                                <option value="minkowski">Minkowski</option>
+                                <option value="chebyshev">Chebyshev</option>
+                                <option value="canberra">Canberra</option>
+                            </select>
+                        </div>
+                        <div class="col">
+                            <label for="algorithm" class="form-label">Algorithm:</label>
+                            <select class="form-select" id="algorithm">
+                                <option value="auto" selected>Auto</option>
+                                <option value="ball_tree">Ball Tree</option>
+                                <option value="kd_tree">KD Tree</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-center mt-3">
+                    <button id="detectAnomaliesBtn" class="btn btn-primary">Detect</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script>
+    let chart1, chart2;
+    let fullData, flags, brushAreas = [];
+    let chart1Title = "Full Data Overview";
+
+    function initCharts() {
+        chart1 = echarts.init(document.getElementById("chart1"));
+        chart2 = echarts.init(document.getElementById("chart2"));
+
+        let option1 = {
+            title: {
+                text: "Please click the button on the left panel to upload the data",
+                left: "center",
+            },
+            toolbox: {show: false},
+            xAxis: {type: "value", data: [], name: "index"},
+            yAxis: {type: "value", data: [], name: "Value"},
+            series: [
+                {
+                    type: "line",
+                    data: [],
+                    smooth: true,
+                    showAllSymbol: true,
+                    animation: false,
+                    progressive: 5000,
+                    progressiveThreshold: 25000,
+                    sampling: 'average', // comment
+                    symbol: function (params) {
+                        return flags[params[0]] === 1 ? "circle" : "emptyCircle";
+                    },
+                    symbolSize: function (params) {
+                        return flags[params[0]] === 1 ? 9 : 5;
+                    },
+                    itemStyle: {
+                        color: function (params) {
+                            return flags[params.dataIndex] === 1
+                                ? "rgba(255, 30, 0, 0.9)"
+                                : "rgba(100, 149, 237, 0.8)";
+                        },
+                    },
+                },
+            ],
+            emphasis: {
+                disabled: true
+            },
+            renderer: "canvas",
+            brush: {
+                transformable: false,
+                toolbox: ["lineX"],
+                removeOnClick: false,
+                xAxisIndex: 0,
+                throttleType: "debounce",
+                throttleDelay: 1,
+                brushStyle: {
+                    color: "rgba(255, 173, 177, 0.7)",
+                    lineWidth: 1,
+                    opacity: 0.7,
+                },
+                brushMode: "multiple",
+            },
+        };
+
+        let option2 = {
+            title: {
+                text: "",
+                left: "center",
+            },
+            toolbox: {show: false},
+            xAxis: {type: "value", data: [], name: "index"},
+            yAxis: {type: "value", data: [], name: "Value"},
+            dataZoom: [{type: "inside"}, {type: "slider"}],
+            renderer: "canvas",
+            tooltip: {
+                trigger: "axis",
+                formatter: function (params) {
+                    let data = params[0].data;
+                    return `Index: ${data[0]}<br>Value: ${data[1]}`;
+                }
+            },
+            series: [
+                {
+                    type: "line",
+                    data: [],
+                    smooth: true,
+                    showAllSymbol: true,
+                    animation: false,
+                    sampling: 'average',
+                    progressive: 5000,
+                    progressiveThreshold: 25000,
+                    symbol: function (params) {
+                        return flags[params[0]] === 1 ? "circle" : "emptyCircle";
+                    },
+                    symbolSize: function (params) {
+                        return flags[params[0]] === 1 ? 9 : 5;
+                    },
+                    itemStyle: {
+                        color: function (params) {
+                            return flags[params.dataIndex] === 1
+                                ? "rgba(255, 30, 0, 0.9)"
+                                : "rgba(100, 149, 237, 0.8)";
+                        },
+                    },
+                },
+            ],
+            emphasis: {
+                disabled: true
+            },
+            brush: {
+                transformable: true,
+                toolbox: ['lineX'],
+                brushMode: 'single',
+                removeOnClick: false,
+                xAxisIndex: 0,
+                throttleType: 'debounce',
+                throttleDelay: 1,
+                brushStyle: {
+                    color: 'rgba(255, 173, 177, 0.4)',
+                    lineWidth: 1,
+                    opacity: 0.7,
+                },
+            },
+        };
+
+        chart1.setOption(option1);
+        chart2.setOption(option2);
+
+        window.addEventListener("resize", () => {
+            chart1.resize();
+            chart2.resize();
+        });
+
+
+        chart2.on("brush", function (params) {
+            let areas = params.areas;
+            if (areas && areas.length > 0) {
+                let newStart = Math.ceil(areas[0].coordRange[0]);
+                let newEnd = Math.floor(areas[0].coordRange[1]);
+
+                if (newStart > newEnd) {
+                    newStart = newEnd;
+                }
+                brushAreas[brushAreas.length - 1] = {start: newStart, end: newEnd};
+            }
+            updateBrushAreas();
+        });
+    }
+
+    window.onload = () => {
+        initCharts();
+    };
+
+
+    // File input listener
+    document.getElementById("fileInput").addEventListener("change", async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const fileText = await file.text();
+        if (file.name.toLowerCase().endsWith(".arff")) {
+            fullData = parseARFF(fileText);
+        } else {
+            alert("Only ARFF parsing shown in this demo.");
+            return;
+        }
+
+        enableSelectTrainSetsPhase();
+    });
+
+
+    // Parse ARFF with 2 columns in the @data section:
+    function parseARFF(text) {
+        const lines = text.split(/\r?\n/).map((line) => line.trim());
+        let dataSection = false;
+        const data = [];
+
+        for (let i = 0; i < lines.length; i++) {
+            if (lines[i].toLowerCase().startsWith("@data")) {
+                dataSection = true;
+                continue;
+            }
+            if (dataSection && lines[i] && !lines[i].startsWith("%")) {
+                const cols = lines[i].split(",");
+                if (cols.length > 0) {
+                    const value = parseFloat(cols[0]);
+                    if (!isNaN(value)) {
+                        data.push(value);
+                    }
+                }
+            }
+        }
+        return data;
+    }
+
+
+    function initChart1() {
+        const seriesData = [];
+        for (let i = 0; i < fullData.length; i++) {
+            seriesData.push([i, fullData[i]]);
+        }
+
+        if (brushAreas.length === 0) {
+            const brushEnd = Math.floor(fullData.length * 0.1);
+            brushAreas = [
+                {
+                    start: 0,
+                    end: brushEnd,
+                },
+            ];
+        }
+
+        chart1.setOption({
+            title: {
+                text: chart1Title,
+                left: "center",
+            },
+            xAxis: {max: fullData.length - 1},
+            series: [
+                {
+                    data: seriesData,
+                },
+            ],
+        });
+    }
+
+
+    function updateBrushAreas() {
+        const areas = brushAreas.map((area) => {
+            return {
+                brushType: "lineX",
+                xAxisIndex: 0,
+                coordRange: [area.start, area.end],
+                transformable: false,
+                brushMode: "multiple",
+                throttleType: "debounce",
+                throttleDelay: 1,
+                brushStyle: {
+                    color: "rgba(255, 173, 177, 0.7)",
+                    lineWidth: 1,
+                    opacity: 0.7,
+                },
+            };
+        });
+
+        chart1.dispatchAction({
+            type: "brush",
+            areas: areas,
+        });
+
+        let lastDic = brushAreas[brushAreas.length - 1]
+        let start = lastDic['start']
+        let end = lastDic['end'];
+        document.getElementById('currentTrainingSetStart').value = start;
+        document.getElementById('currentTrainingSetEnd').value = end;
+    }
+
+
+    function updateChart2() {
+        let newBrush = brushAreas[brushAreas.length - 1];
+        let sliceStart = brushAreas.length > 1 ? brushAreas[brushAreas.length - 2].end + 1 : 0;
+
+        const seriesData2 = [];
+        for (let i = sliceStart; i < fullData.length; i++) {
+            seriesData2.push([i, fullData[i]]);
+        }
+
+        chart2.setOption({
+                title: {
+                    text: "Training Set" + brushAreas.length,
+                    subtext: 'Use the scrollbar or mouse wheel to navigate. Adjust the brush area by dragging its sides' +
+                        ' to resize or moving it to shift the selection',
+                    left: "center",
+                },
+                xAxis: {
+                    min: newBrush.start,
+                    max: fullData.length - 1,
+                },
+                series: [
+                    {
+                        data: seriesData2,
+                        sampling: 'average',
+                    },
+                ],
+
+            }, {lazyUpdate: true}
+        );
+
+        chart2.dispatchAction({
+            type: "brush",
+            areas: [
+                {
+                    brushType: 'lineX',
+                    xAxisIndex: 0,
+                    coordRange: [newBrush.start, newBrush.end],
+                },
+            ],
+        });
+
+        chart2.dispatchAction({
+            type: "dataZoom",
+            startValue: newBrush.start,
+            endValue: (newBrush.end - newBrush.start) * 0.25 + newBrush.end,
+        });
+    }
+
+
+    // add training set button
+    document.getElementById("addTrainingSet").addEventListener("click", () => {
+        if (!fullData || fullData.length === 0) return;
+        const lastArea = brushAreas[brushAreas.length - 1];
+        const newStart = lastArea.end + 1;
+        const remaining = fullData.length - newStart;
+        if (remaining <= 0) {
+            alert("No remaining data to add a new training set.");
+            return;
+        }
+
+        const previousLength = lastArea.end - lastArea.start;
+        let newLength = previousLength;
+        if (remaining < previousLength) {
+            newLength = Math.max(Math.floor(remaining * 0.2), 1);
+        }
+        const newEnd = Math.min(newStart + newLength, fullData.length - 1);
+        const newArea = {
+            start: newStart,
+            end: newEnd,
+        };
+
+        brushAreas.push(newArea);
+        updateBrushAreas();
+        updateChart2();
+        updateTrainingSetStatisticsTitle(brushAreas.length.toString());
+    });
+
+
+    // confirm button
+    document.getElementById('confirmButton').addEventListener("click", () => {
+        let newStart = parseFloat(document.getElementById('currentTrainingSetStart').value);
+        let newEnd = parseFloat(document.getElementById('currentTrainingSetEnd').value);
+
+        if (newStart >= newEnd || newEnd > fullData.length || newStart < brushAreas[brushAreas.length - 1]['start']) {
+            alert('Invalid Input');
+            return;
+        }
+
+        brushAreas[brushAreas.length - 1] = {
+            start: newStart,
+            end: newEnd,
+        };
+
+        updateBrushAreas();
+
+        const seriesData2 = [];
+        for (let i = newStart; i < fullData.length; i++) {
+            seriesData2.push([i, fullData[i]]);
+        }
+
+
+        // same as updateChart2
+        chart2.setOption({
+                title: {
+                    text: "Training Set" + brushAreas.length,
+                    subtext: 'Use the scrollbar or mouse wheel to navigate. Adjust the brush area by dragging its sides' +
+                        ' to resize or moving it to shift the selection',
+                    left: "center",
+                },
+                xAxis: {
+                    min: newStart,
+                    max: fullData.length - 1,
+                },
+                series: [
+                    {
+                        data: seriesData2,
+                        sampling: 'average',
+                    },
+                ],
+
+            }, {lazyUpdate: true}
+        );
+
+        chart2.dispatchAction({
+            type: "brush",
+            areas: [
+                {
+                    brushType: 'lineX',
+                    xAxisIndex: 0,
+                    coordRange: [newStart, newEnd],
+                },
+            ],
+        });
+
+        chart2.dispatchAction({
+            type: "dataZoom",
+            startValue: newStart,
+            endValue: (newEnd - newStart) * 0.25 + newEnd,
+        });
+    })
+
+
+    // remove training set button
+    document.getElementById("removeTrainingSet").addEventListener("click", () => {
+        if (brushAreas.length <= 1) {
+            alert("Please keep at least one training set");
+            return;
+        }
+        brushAreas.pop();
+        updateBrushAreas();
+        updateChart2();
+        updateTrainingSetStatisticsTitle(brushAreas.length.toString());
+    });
+
+
+    document.getElementById('finshSelectTrainingSetBtn').addEventListener("click", () => {
+        enableMarkAnomaliesPhase();
+    })
+
+
+    document.getElementById("revertToSelectTrainingSetBtn").addEventListener("click", () => {
+        enableSelectTrainSetsPhase();
+    })
+
+
+    function enableAddRemoveBtn() {
+        let button = document.getElementById("addTrainingSet");
+
+        button.disabled = false;
+        button.classList.replace("btn-outline-secondary", "btn-outline-primary");
+        button.style.boxShadow = "0 0 8px rgba(0, 123, 255, 0.5)";
+        button.classList.remove("d-none");
+
+        let button1 = document.getElementById("removeTrainingSet");
+        button1.disabled = false;
+        button1.classList.replace("btn-outline-secondary", "btn-outline-danger");
+        button1.style.boxShadow = "0 0 8px rgba(220, 53, 69, 0.5)";
+        button1.classList.remove("d-none");
+    }
+
+
+    // show the overall data and current training dataset
+    function enableTotalDataNum() {
+        document.getElementById('totalRecords').textContent = fullData.length.toString();
+        document.getElementById('datasetStats').classList.remove('d-none');
+        document.getElementById('trainDatasetStats').classList.remove('d-none');
+        document.getElementById('anomalyCount').innerText = '0';
+        document.getElementById('trainingSetRecords').innerText = '0';
+    }
+
+    // show 'finish select training sets' btn
+    function enableFinishSelectTrainingSetsBtn() {
+        document.getElementById('finshSelectTrainingSet').classList.remove('d-none');
+    }
+
+    // hide 'finish select training sets' btn
+    function hideFinishSelectTrainingSetsBtn() {
+        document.getElementById('finshSelectTrainingSet').classList.add('d-none');
+    }
+
+    function hideAddRemoveBtn() {
+        let button = document.getElementById("addTrainingSet");
+        let button1 = document.getElementById("removeTrainingSet");
+        button.classList.add('d-none');
+        button1.classList.add('d-none');
+    }
+
+
+    // show 'revert to select training sets' btn
+    function enableRevertSelectTrainingSetsBtn() {
+        document.getElementById('revertToSelectTrainingSet').classList.remove('d-none');
+    }
+
+    // hide 'revert to select training sets' btn
+    function hideRevertSelectTrainingSetsBtn() {
+        document.getElementById('revertToSelectTrainingSet').classList.add('d-none');
+    }
+
+    // rename chart2 title
+    function renameChart2Title(title, subtitle) {
+        let currentOptions = chart2.getOption();
+
+        chart2.setOption({
+            title: {
+                text: title,
+                subtext: subtitle !== undefined ? subtitle : currentOptions.title[0].subtext
+            }
+        });
+    }
+
+
+    function updateTrainingSetStatisticsTitle(serialNum) {
+        document.getElementById('trainingSetLabel').textContent = 'Training Set' + serialNum + ':'
+    }
+
+
+    function showLowerPanelSections() {
+        document.getElementById("manualMarkingSection").classList.remove("d-none");
+        document.getElementById("thresholdMarkingSection").classList.remove("d-none");
+    }
+
+    function hideLowerPanelSections() {
+        document.getElementById("manualMarkingSection").classList.add("d-none");
+        document.getElementById("thresholdMarkingSection").classList.add("d-none");
+    }
+
+    // update anomalies numbers
+    function updateAnomaliesNum() {
+    const totalInBrush = fullData.reduce((count, _, i) => count + (isInBrushAreas(i) ? 1 : 0), 0);
+    const countOnes = flags.filter(value => value === 1).length;
+    const percentage = totalInBrush > 0 ? ((countOnes / totalInBrush) * 100).toFixed(4) + '%' : '0.0000%';
+
+    document.getElementById('anomalyCount').textContent = `${countOnes} (${percentage})`;
+}
+
+
+    // mark anomalies
+    function markAnomalies() {
+        const seriesData = [];
+        for (let i = 0; i < fullData.length; i++) {
+            seriesData.push([i, fullData[i]]);
+        }
+
+        chart2.setOption({
+            series: [
+                {
+                    data: seriesData,
+                    sampling: 'average',
+                    symbol: function (params) {
+                        return flags[params[0]] === 1 ? 'circle' : 'emptyCircle';
+                    },
+                    symbolSize: function (params) {
+                        return flags[params[0]] === 1 ? 9 : 5;
+                    },
+                    itemStyle: {
+                        color: function (params) {
+                            return flags[params.dataIndex] === 1 ? 'rgba(255, 30, 0, 0.9)' : 'rgba(100, 149, 237, 0.8)';
+                        },
+                    },
+                },
+            ],
+        });
+    }
+
+
+    // handle click
+    function handleContextMenuClick(e) {
+        const anomalyOption = e.target.getAttribute('data-anomaly');
+        if (anomalyOption && currentDataIndex != null) {
+            if (anomalyOption === 'normal') {
+                flags[currentDataIndex] = 0;
+            } else {
+                flags[currentDataIndex] = 1;
+            }
+
+            // enable/disable auto detect button
+            hasAtLeastTwoOnes() ? enableAutoDetect() : disableAutoDetect();
+
+            markAnomalies();
+        }
+        hideContextMenu();
+    }
+
+
+    function isInBrushAreas(index) {
+        return brushAreas.some(area => index >= area.start && index <= area.end);
+    }
+
+
+    function thresholdSelect() {
+        let upperBoundValue = document.getElementById("anomalyUpperBound").value;
+        upperBoundValue = upperBoundValue === "" ? Infinity : parseFloat(upperBoundValue);
+        let lowerBoundValue = document.getElementById("anomalyLowerBound").value;
+        lowerBoundValue = lowerBoundValue === "" ? -Infinity : parseFloat(lowerBoundValue);
+
+
+        let totalInBrush = 0;
+        for (let i = 0; i < fullData.length; i++) {
+            if (isInBrushAreas(i)) {
+                totalInBrush++;
+                if (fullData[i] <= lowerBoundValue || fullData[i] >= upperBoundValue) {
+                    flags[i] = 1;
+                }
+            }
+        }
+
+        const countOnes = flags.reduce((count, value) => count + (value === 1 ? 1 : 0), 0);
+        const percentage = totalInBrush > 0 ? ((countOnes / totalInBrush) * 100).toFixed(4) + '%' : '0.0000%';
+
+        document.getElementById('anomalyCount').textContent = `${countOnes} (${percentage})`;
+
+
+        markAnomalies();
+    }
+
+
+    // auto detect modal
+    document.getElementById("anomalyMethod").addEventListener("change", function () {
+        const method = this.value;
+        document.getElementById("lofParameters").style.display = method === "lof" ? "block" : "none";
+        document.getElementById("iforestParameters").style.display = method === "iforest" ? "block" : "none";
+    });
+
+    document.getElementById("metric").addEventListener("change", function () {
+        const pContainer = document.getElementById("pValueContainer");
+        pContainer.style.display = this.value === "minkowski" ? "block" : "none";
+    });
+
+
+    // auto-detect based on auto setting parameters
+    document.getElementById('optimizeHyperparametersBtn').addEventListener('click', function () {
+        const selectElement = document.getElementById("anomalyMethod");
+        const url = selectElement.options[selectElement.selectedIndex].dataset.url;
+
+        const body = {
+            hyperparameters: 0,
+            data: fullData,
+            flags: flags,
+            areas: brushAreas,
+        };
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(body)
+        })
+            .then(response => response.json())
+            .then(data => {
+                flags = data;
+                markAnomalies();
+                updateAnomaliesNum();
+                bootstrap.Modal.getInstance(document.getElementById('autoDetectAnomaliesModal')).hide();
+            })
+            .catch(error => {
+                console.error("error");
+            });
+    });
+
+
+    // auto-detect based on parameters set by the user
+    document.getElementById('detectAnomaliesBtn').addEventListener('click', function () {
+        const method = document.getElementById("anomalyMethod").value;
+
+        const selectElement = document.getElementById("anomalyMethod");
+        const url = selectElement.options[selectElement.selectedIndex].dataset.url;
+
+        let body;
+
+        if (method === "lof") {
+            // LOF
+            body = {
+                hyperparameters: 1,
+                data: fullData,
+                flags: flags,
+                areas: brushAreas,
+                nNeighbors: document.getElementById("nNeighbors").value,
+                contamination: document.getElementById('contamination').value,
+                metric: document.getElementById("metric").value,
+                algorithm: document.getElementById("algorithm").value,
+                leafSize: document.getElementById('leafSize').value,
+                pValue: document.getElementById('pValue').value,
+            };
+        } else {
+            // iForest
+            body = {
+                hyperparameters: 1,
+                data: fullData,
+                flags: flags,
+                areas: brushAreas,
+                contamination: document.getElementById('contamination').value,
+                n_estimator: document.getElementById('nEstimators').value,
+                maxSamples: document.getElementById('maxSamples').value
+            };
+        }
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(body)
+        })
+            .then(response => response.json())
+            .then(data => {
+                flags = data;
+                markAnomalies();
+                updateAnomaliesNum();
+                bootstrap.Modal.getInstance(document.getElementById('autoDetectAnomaliesModal')).hide();
+            })
+            .catch(error => {
+                console.error("error");
+            });
+
+
+    })
+
+
+    // after upload the file, then the users should select training sets
+    function enableSelectTrainSetsPhase() {
+        flags = new Array(fullData.length).fill(0);
+        enableAddRemoveBtn();
+        enableTotalDataNum();
+        enableFinishSelectTrainingSetsBtn();
+        initChart1();
+        updateBrushAreas();
+        updateChart2();
+        hideRevertSelectTrainingSetsBtn();
+        hideLowerPanelSections();
+
+        chart2.on("brush", function (params) {
+            let areas = params.areas;
+            if (areas && areas.length > 0) {
+                let newStart = Math.ceil(areas[0].coordRange[0]);
+                let newEnd = Math.floor(areas[0].coordRange[1]);
+
+                if (newStart > newEnd) {
+                    newStart = newEnd;
+                }
+                brushAreas[brushAreas.length - 1] = {start: newStart, end: newEnd};
+            }
+            updateBrushAreas();
+        });
+
+        chart2.getZr().off('contextmenu');
+        document.getElementById('contextMenuList').removeEventListener('click', handleContextMenuClick);
+        document.removeEventListener('click', hideContextMenu);
+        hideContextMenu();
+    }
+
+
+    // Show custom context menu at mouse position
+    function showContextMenu(evt) {
+        const menu = document.getElementById('contextMenu');
+        menu.style.display = 'block';
+        menu.style.left = evt.pageX + 'px';
+        menu.style.top = evt.pageY + 'px';
+    }
+
+    // Hide context menu
+    function hideContextMenu() {
+        document.getElementById('contextMenu').style.display = 'none';
+    }
+
+    function hasAtLeastTwoOnes() {
+        let count = 0;
+        for (let i = 0; i < flags.length; i++) {
+            if (flags[i] === 1) {
+                count++;
+                if (count >= 2) return true;
+            }
+        }
+        return false;
+    }
+
+
+    // auto detect btn
+    function enableAutoDetect() {
+        let button = document.getElementById("autoDetectBtn");
+        button.disabled = false;
+        button.classList.replace("btn-outline-primary", "btn-primary");
+        button.style.boxShadow = "0 0 8px rgba(0, 123, 255, 0.5)";
+    }
+
+    function disableAutoDetect() {
+        let button = document.getElementById("autoDetectBtn");
+        button.disabled = true;
+        button.classList.replace("btn-primary", "btn-outline-primary");
+        button.style.boxShadow = "none";
+    }
+
+    // Bind the Mark Anomalies button, clicking it will display the modal
+    document.getElementById('autoDetectBtn').addEventListener('click', function () {
+        let modal = new bootstrap.Modal(document.getElementById('autoDetectAnomaliesModal'));
+        modal.show();
+    });
+
+
+    function enableMarkAnomaliesPhase() {
+        document.getElementById('finshSelectTrainingSet').classList.add("d-none");
+        document.getElementById('trainDatasetStats').classList.add('d-none');
+        document.getElementById('trainingSetRecords').innerText =
+            brushAreas.reduce((sum, area) => sum + (area.end - area.start), 0);
+        hideAddRemoveBtn();
+        enableRevertSelectTrainingSetsBtn();
+        renameChart2Title('Mark Anomalies', 'Use the scrollbar or mouse wheel to navigate.');
+        showLowerPanelSections();
+
+
+        const seriesDataFull = [];
+        for (let i = 0; i < fullData.length; i++) {
+            seriesDataFull.push([i, fullData[i]]);
+        }
+        chart2.setOption({
+            xAxis: {min: 0, max: fullData.length - 1,},
+            series: [{data: seriesDataFull}]
+        },);
+
+        chart2.off('brush');
+
+        const areas = brushAreas.map((area) => {
+            return {
+                brushType: "lineX",
+                xAxisIndex: 0,
+                coordRange: [area.start, area.end],
+                transformable: false,
+                brushMode: "multiple",
+            };
+        });
+
+        chart2.dispatchAction({type: "brush", areas: areas});
+
+        chart2.dispatchAction({
+            type: "dataZoom",
+            startValue: brushAreas[0].start,
+            endValue: (brushAreas[0].end - brushAreas[0].start),
+        });
+
+
+        // manual mark
+        chart2.getZr().on('contextmenu', function (event) {
+            // Prevent the browser's default context menu
+            event.event.preventDefault();
+
+
+            const pixel = [event.offsetX, event.offsetY];
+            const point = chart2.convertFromPixel({seriesIndex: 0}, pixel);
+
+            if (point && !isNaN(point[0])) {
+                const dataIndex = Math.round(point[0]);
+
+                // Check bounds just to be safe
+                if (dataIndex >= 0 && dataIndex < fullData.length) {
+                    currentDataIndex = dataIndex;
+                    showContextMenu(event.event);
+                }
+            }
+        });
+
+
+        // Context menu list clicks
+        document.getElementById('contextMenuList').addEventListener('click', handleContextMenuClick);
+
+        // Hide context menu on any click outside
+        document.addEventListener('click', function () {
+            hideContextMenu();
+        });
+    }
+
+
+</script>
+
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
