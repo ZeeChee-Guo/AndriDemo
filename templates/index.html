@@ -165,31 +165,32 @@
         </div>
 
         <div class="panel-section" id="panelSection">
-            <div class="d-flex gap-2 p-1 w-100 mt-2">
+            <div class="d-flex gap-1 p-1 w-100">
                 <button id="addTrainingSet" class="btn btn-outline-secondary btn-sm w-50 d-none">Add New Training Set
                 </button>
-                <button id="removeTrainingSet" class="btn btn-outline-secondary btn-sm w-50 d-none">Remove Last
-                    Training
+                <button id="removeTrainingSet" class="btn btn-outline-secondary btn-sm w-50 d-none">Remove Last Training
                     Set
                 </button>
             </div>
+
             <!-- Section 1: Manual Marking -->
-            <div class="p-2 mb-1 bg-light border rounded small d-none" id="manualMarkingSection">
-                <p class="text-muted text-center mb-1"><strong>Manual Marking: </strong>Right-click to mark at least one
-                    point, then click "Auto Detect" to identify anomalies automatically.</p>
+            <div class="p-2 bg-light border rounded small d-none mb-1" id="manualMarkingSection">
+                <p class="text-muted text-center mb-1">
+                    <strong>Manual Marking: </strong>Right-click to mark at least one point, then click "Auto Detect" to
+                    identify anomalies automatically.
+                </p>
                 <div class="text-center">
                     <button id="autoDetectBtn" class="btn btn-outline-primary btn-sm" disabled>Auto Detect</button>
                 </div>
             </div>
 
             <!-- Section 2: Threshold-Based Marking -->
-            <div class="p-2 border rounded small d-none" id="thresholdMarkingSection">
-                <p class="text-muted mb-2"><strong>Threshold-Based Marking: </strong>
-                    Points are classified as anomalies if it falls outside the range [lower bound, upper bound],
-                    inclusive.
+            <div class="p-2 border rounded small d-none mb-1" id="thresholdMarkingSection">
+                <p class="text-muted mb-2">
+                    <strong>Threshold-Based Marking: </strong>Points are anomalies if they fall outside
+                    the range [lower bound, upper bound], inclusive.
                 </p>
-
-                <div class="d-flex align-items-center mb-2">
+                <div class="d-flex align-items-center mb-1">
                     <label for="anomalyUpperBound" class="form-label mb-0 me-2">Upper Bound:</label>
                     <input type="number" class="form-control form-control-sm me-3" id="anomalyUpperBound"
                            placeholder="Enter upper bound" step="0.001">
@@ -197,8 +198,6 @@
                     <input type="number" class="form-control form-control-sm" id="anomalyLowerBound"
                            placeholder="Enter lower bound" step="0.001">
                 </div>
-
-                <!-- Select Button -->
                 <div class="text-center">
                     <button id="selectAnomaliesPanelBtn" class="btn btn-outline-primary btn-sm"
                             onclick="thresholdSelect()">Apply
@@ -206,7 +205,22 @@
                 </div>
             </div>
 
+            <!-- Section 3: Mark Sequential Anomalies -->
+            <div class="p-2 bg-light border rounded small d-none" id="sequentialAnomaliesSection">
+                <p class="text-muted text-center mb-1">
+                    <strong>Mark Sequential Anomalies: </strong>Click the button below and drag out an area on the chart
+                    to mark as sequential anomalies.
+                </p>
+                <div class="text-center">
+                    <button id="markSequentialAnomaliesBtn" class="btn btn-outline-primary btn-sm">Mark Sequential
+                        Anomalies
+                    </button>
+                    <button id="redoSequentialAnomaliesBtn" class="btn btn-outline-danger btn-sm">Redo</button>
+                </div>
+            </div>
+
         </div>
+
     </div>
 </div>
 
@@ -813,21 +827,23 @@
     function showLowerPanelSections() {
         document.getElementById("manualMarkingSection").classList.remove("d-none");
         document.getElementById("thresholdMarkingSection").classList.remove("d-none");
+        document.getElementById('sequentialAnomaliesSection').classList.remove("d-none");
     }
 
     function hideLowerPanelSections() {
         document.getElementById("manualMarkingSection").classList.add("d-none");
         document.getElementById("thresholdMarkingSection").classList.add("d-none");
+        document.getElementById("sequentialAnomaliesSection").classList.add("d-none");
     }
 
     // update anomalies numbers
     function updateAnomaliesNum() {
-    const totalInBrush = fullData.reduce((count, _, i) => count + (isInBrushAreas(i) ? 1 : 0), 0);
-    const countOnes = flags.filter(value => value === 1).length;
-    const percentage = totalInBrush > 0 ? ((countOnes / totalInBrush) * 100).toFixed(4) + '%' : '0.0000%';
+        const totalInBrush = fullData.reduce((count, _, i) => count + (isInBrushAreas(i) ? 1 : 0), 0);
+        const countOnes = flags.filter(value => value === 1).length;
+        const percentage = totalInBrush > 0 ? ((countOnes / totalInBrush) * 100).toFixed(4) + '%' : '0.0000%';
 
-    document.getElementById('anomalyCount').textContent = `${countOnes} (${percentage})`;
-}
+        document.getElementById('anomalyCount').textContent = `${countOnes} (${percentage})`;
+    }
 
 
     // mark anomalies
@@ -1008,9 +1024,157 @@
             .catch(error => {
                 console.error("error");
             });
-
-
     })
+
+
+    // mark sequential anomalies
+    let sequentialMode = false;
+    let seqDragStart = null;
+    let isSeqDragging = false;
+    const sequentialHandlers = {};
+    let markingStack = [];
+
+    document.getElementById('markSequentialAnomaliesBtn').addEventListener('click', function () {
+        if (this.classList.contains("btn-outline-primary")) {
+            this.textContent = "Finish Mark Sequential Anomalies";
+            this.classList.remove("btn-outline-primary");
+            this.classList.add("btn-outline-success");
+        } else {
+            this.textContent = "Mark Sequential Anomalies";
+            this.classList.remove("btn-outline-success");
+            this.classList.add("btn-outline-primary");
+        }
+
+
+        sequentialMode = !sequentialMode;
+        if (sequentialMode) {
+            chart2.setOption({
+                dataZoom: [{
+                    type: 'inside',
+                    disabled: true
+                }]
+            });
+
+            let gridRect = chart2.getModel().getComponent('grid').coordinateSystem._rect;
+            let gridLeft = gridRect.x;
+            let gridRight = gridRect.x + gridRect.width;
+            let gridTop = gridRect.y;
+            let gridBottom = gridRect.y + gridRect.height;
+            seqGridTop = gridTop;
+            seqGridHeight = gridRect.height;
+
+            chart2.getZr().on('mousedown', sequentialHandlers.mousedown = function (e) {
+                if (e.offsetX < gridLeft || e.offsetX > gridRight || e.offsetY < gridTop || e.offsetY > gridBottom || !sequentialMode) {
+                    return;
+                }
+
+
+                isSeqDragging = true;
+                seqDragStart = e.offsetX;
+                chart2.setOption({
+                    graphic: [{
+                        id: 'seqRect',
+                        type: 'rect',
+                        shape: {
+                            x: seqDragStart,
+                            y: gridTop,
+                            width: 0,
+                            height: seqGridHeight
+                        },
+                        style: {
+                            fill: 'rgba(255, 165, 0, 0.5)',
+                            stroke: 'orange',
+                            lineWidth: 1
+                        }
+                    }]
+                });
+            });
+
+            chart2.getZr().on('mousemove', sequentialHandlers.mousemove = function (e) {
+                if (!isSeqDragging) return;
+                let currentX = Math.max(gridLeft, Math.min(e.offsetX, gridRight));
+                let x = Math.min(seqDragStart, currentX);
+                let width = Math.abs(currentX - seqDragStart);
+                chart2.setOption({
+                    graphic: [{
+                        id: 'seqRect',
+                        shape: {x: x, y: gridTop, width: width, height: seqGridHeight}
+                    }]
+                });
+            });
+
+            chart2.getZr().on('mouseup', sequentialHandlers.mouseup = function (e) {
+                if (!isSeqDragging) return;
+                isSeqDragging = false;
+                let currentX = Math.max(gridLeft, Math.min(e.offsetX, gridRight));
+                let startPixel = Math.min(seqDragStart, currentX);
+                let endPixel = Math.max(seqDragStart, currentX);
+
+
+                let midY = gridTop + seqGridHeight / 2;
+                let startCoord = chart2.convertFromPixel({seriesIndex: 0}, [startPixel, midY])[0];
+                let endCoord = chart2.convertFromPixel({seriesIndex: 0}, [endPixel, midY])[0];
+                startCoord = Math.round(startCoord);
+                endCoord = Math.round(endCoord);
+                for (let i = startCoord; i <= endCoord; i++) {
+                    if (i >= 0 && i < fullData.length) {
+                        flags[i] = 1;
+                    }
+                }
+                chart2.setOption(
+                    {
+                        graphic: [{
+                            id: 'seqRect',
+                            type: 'rect',
+                            shape: {
+                                x: -1,
+                                y: gridTop,
+                                width: 0.0001,
+                                height: seqGridHeight
+                            },
+                            style: {
+                                fill: 'rgba(255, 165, 0, 0.5)',
+                                stroke: 'orange',
+                                lineWidth: 1
+                            }
+                        }]
+                    }
+                );
+
+                markingStack.push({start: startCoord, end: endCoord});
+                markAnomalies();
+                updateAnomaliesNum();
+            });
+
+        } else {
+            chart2.getZr().off('mousedown', sequentialHandlers.mousedown);
+            chart2.getZr().off('mousemove', sequentialHandlers.mousemove);
+            chart2.getZr().off('mouseup', sequentialHandlers.mouseup);
+            chart2.setOption({
+                dataZoom: [{
+                    type: 'inside',
+                    disabled: false
+                }]
+            });
+            chart2.setOption({graphic: []});
+        }
+    });
+
+    // redo
+    document.getElementById('redoSequentialAnomaliesBtn').addEventListener('click', function () {
+        if (markingStack.length > 0) {
+            const lastMark = markingStack.pop();
+            for (let i = lastMark.start; i <= lastMark.end; i++) {
+                if (i >= 0 && i < fullData.length) {
+                    flags[i] = 0;
+                }
+            }
+            markAnomalies();
+            updateAnomaliesNum();
+        } else {
+            alert("No more sequntail anomalies left");
+        }
+    });
 
 
     // after upload the file, then the users should select training sets
@@ -1043,6 +1207,10 @@
         document.getElementById('contextMenuList').removeEventListener('click', handleContextMenuClick);
         document.removeEventListener('click', hideContextMenu);
         hideContextMenu();
+
+        sequentialMode = false;
+        isSeqDragging = false;
+
     }
 
 
@@ -1094,6 +1262,7 @@
 
 
     function enableMarkAnomaliesPhase() {
+        markingStack = [];
         document.getElementById('finshSelectTrainingSet').classList.add("d-none");
         document.getElementById('trainDatasetStats').classList.add('d-none');
         document.getElementById('trainingSetRecords').innerText =
