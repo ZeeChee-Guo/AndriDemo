@@ -267,65 +267,75 @@
                     </select>
                 </div>
 
-                <!-- IForest Parameters Section (Default Visible) -->
-                <div id="iforestParameters" class="p-3 border rounded">
-                    <div class="row">
-                        <div class="col">
-                            <label for="nEstimators" class="form-label">Trees (n_estimators):</label>
-                            <input type="number" class="form-control" id="nEstimators" value="100" min="1">
+                <div class="text-center mb-3">
+                    <button id="manualParamBtn" class="btn btn-primary">Manual Parameter Setting</button>
+                </div>
+
+                <div id="manualParamContainer" style="display: none;">
+                    <!-- IForest Parameters Section -->
+                    <div id="iforestParameters" class="p-3 border rounded">
+                        <div class="row">
+                            <div class="col">
+                                <label for="nEstimators" class="form-label">Trees (n_estimators):</label>
+                                <input type="number" class="form-control" id="nEstimators" value="100" min="1">
+                            </div>
+                            <div class="col">
+                                <label for="maxSamples" class="form-label">Max Samples:</label>
+                                <input type="number" class="form-control" id="maxSamples" value="256" min="1">
+                            </div>
                         </div>
-                        <div class="col">
-                            <label for="maxSamples" class="form-label">Max Samples:</label>
-                            <input type="number" class="form-control" id="maxSamples" value="256" min="1">
+                        <div class="row mt-3">
+                            <div class="col">
+                                <label for="contaminationIf" class="form-label">Contamination:</label>
+                                <input type="number" class="form-control" id="contaminationIf" value="0.1" step="0.001"
+                                       min="0.001" max="0.5">
+                            </div>
+                        </div>
+                        <div class="text-center mt-3">
+                            <button id="detectAnomaliesBtn1" class="btn btn-primary">Detect</button>
                         </div>
                     </div>
-                    <div class="row mt-3">
-                        <div class="col">
-                            <label for="contaminationIf" class="form-label">Contamination:</label>
-                            <input type="number" class="form-control" id="contaminationIf" value="0.1" step="0.001"
-                                   min="0.001" max="0.5">
+
+                    <!-- LOF Parameters Section -->
+                    <div id="lofParameters" class="p-3 border rounded" style="display: none;">
+                        <div class="row">
+                            <div class="col">
+                                <label for="nNeighbors" class="form-label">Neighbors (n_neighbors):</label>
+                                <input type="number" class="form-control" id="nNeighbors" value="20" min="1">
+                            </div>
+                            <div class="col">
+                                <label for="contamination" class="form-label">Contamination:</label>
+                                <input type="number" class="form-control" id="contamination" value="0.1" step="0.001"
+                                       min="0.001" max="0.5">
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col">
+                                <label for="metric" class="form-label">Distance Metric:</label>
+                                <select class="form-select" id="metric">
+                                    <option value="euclidean" selected>Euclidean</option>
+                                    <option value="manhattan">Manhattan</option>
+                                    <option value="minkowski">Minkowski</option>
+                                    <option value="chebyshev">Chebyshev</option>
+                                    <option value="canberra">Canberra</option>
+                                </select>
+                            </div>
+                            <div class="col">
+                                <label for="algorithm" class="form-label">Algorithm:</label>
+                                <select class="form-select" id="algorithm">
+                                    <option value="auto" selected>Auto</option>
+                                    <option value="ball_tree">Ball Tree</option>
+                                    <option value="kd_tree">KD Tree</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="text-center mt-3">
+                            <button id="detectAnomaliesBtn2" class="btn btn-primary">Detect</button>
                         </div>
                     </div>
                 </div>
 
-                <!-- LOF Parameters Section (Hidden by Default) -->
-                <div id="lofParameters" class="p-3 border rounded" style="display: none;">
-                    <div class="row">
-                        <div class="col">
-                            <label for="nNeighbors" class="form-label">Neighbors (n_neighbors):</label>
-                            <input type="number" class="form-control" id="nNeighbors" value="20" min="1">
-                        </div>
-                        <div class="col">
-                            <label for="contamination" class="form-label">Contamination:</label>
-                            <input type="number" class="form-control" id="contamination" value="0.1" step="0.001"
-                                   min="0.001" max="0.5">
-                        </div>
-                    </div>
-                    <div class="row mt-3">
-                        <div class="col">
-                            <label for="metric" class="form-label">Distance Metric:</label>
-                            <select class="form-select" id="metric">
-                                <option value="euclidean" selected>Euclidean</option>
-                                <option value="manhattan">Manhattan</option>
-                                <option value="minkowski">Minkowski</option>
-                                <option value="chebyshev">Chebyshev</option>
-                                <option value="canberra">Canberra</option>
-                            </select>
-                        </div>
-                        <div class="col">
-                            <label for="algorithm" class="form-label">Algorithm:</label>
-                            <select class="form-select" id="algorithm">
-                                <option value="auto" selected>Auto</option>
-                                <option value="ball_tree">Ball Tree</option>
-                                <option value="kd_tree">KD Tree</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
 
-                <div class="text-center mt-3">
-                    <button id="detectAnomaliesBtn" class="btn btn-primary">Detect</button>
-                </div>
             </div>
         </div>
     </div>
@@ -378,20 +388,36 @@
                 disabled: true
             },
             renderer: "canvas",
-            brush: {
-                transformable: false,
-                toolbox: ["lineX"],
-                removeOnClick: false,
-                xAxisIndex: 0,
-                throttleType: "debounce",
-                throttleDelay: 1,
-                brushStyle: {
-                    color: "rgba(255, 173, 177, 0.7)",
-                    lineWidth: 1,
-                    opacity: 0.7,
+            brush: [
+                {
+                    id: 'trainingBrush', // 用于训练集区域
+                    xAxisIndex: 0,
+                    brushType: 'lineX',
+                    brushMode: 'multiple',
+                    throttleType: 'debounce',
+                    throttleDelay: 1,
+                    transformable: false,
+                    brushStyle: {
+                        color: "rgba(255, 173, 177, 0.7)", // 浅粉色
+                        lineWidth: 1,
+                        opacity: 0.7,
+                    },
                 },
-                brushMode: "multiple",
-            },
+                {
+                    id: 'currentWindowBrush', // 用于当前窗口区域
+                    xAxisIndex: 0,
+                    brushType: 'lineX',
+                    brushMode: 'single', // 当前窗口只有一个区域
+                    throttleType: 'debounce',
+                    throttleDelay: 1,
+                    transformable: false,
+                    brushStyle: {
+                        color: "rgba(129, 216, 208, 0.7)", // 蒂芙尼蓝色
+                        lineWidth: 1,
+                        opacity: 0.7,
+                    },
+                }
+            ],
         };
 
         let option2 = {
@@ -558,33 +584,27 @@
 
 
     function updateBrushAreas() {
-        const areas = brushAreas.map((area) => {
+        const trainingAreas = brushAreas.map((area) => {
             return {
                 brushType: "lineX",
                 xAxisIndex: 0,
                 coordRange: [area.start, area.end],
                 transformable: false,
-                brushMode: "multiple",
-                throttleType: "debounce",
-                throttleDelay: 1,
-                brushStyle: {
-                    color: "rgba(255, 173, 177, 0.7)",
-                    lineWidth: 1,
-                    opacity: 0.7,
-                },
             };
         });
 
         chart1.dispatchAction({
             type: "brush",
-            areas: areas,
+            brushId: 'trainingBrush',
+            areas: trainingAreas,
         });
 
-        let lastDic = brushAreas[brushAreas.length - 1]
-        let start = lastDic['start']
-        let end = lastDic['end'];
-        document.getElementById('currentTrainingSetStart').value = start;
-        document.getElementById('currentTrainingSetEnd').value = end;
+
+        let lastDic = brushAreas[brushAreas.length - 1];
+        let start = lastDic["start"];
+        let end = lastDic["end"];
+        document.getElementById("currentTrainingSetStart").value = start;
+        document.getElementById("currentTrainingSetEnd").value = end;
     }
 
 
@@ -628,6 +648,7 @@
                 },
             ],
         });
+
 
         chart2.dispatchAction({
             type: "dataZoom",
@@ -899,6 +920,7 @@
     }
 
 
+    // mark by threshold
     function thresholdSelect() {
         let upperBoundValue = document.getElementById("anomalyUpperBound").value;
         upperBoundValue = upperBoundValue === "" ? Infinity : parseFloat(upperBoundValue);
@@ -922,6 +944,7 @@
         document.getElementById('anomalyCount').textContent = `${countOnes} (${percentage})`;
 
 
+        hasAtLeastTwoOnes() ? enableAutoDetect() : disableAutoDetect();
         markAnomalies();
     }
 
@@ -971,13 +994,10 @@
     });
 
 
-    // auto-detect based on parameters set by the user
-    document.getElementById('detectAnomaliesBtn').addEventListener('click', function () {
+    function handleDetectAnomalies() {
         const method = document.getElementById("anomalyMethod").value;
-
         const selectElement = document.getElementById("anomalyMethod");
         const url = selectElement.options[selectElement.selectedIndex].dataset.url;
-
         let body;
 
         if (method === "lof") {
@@ -991,8 +1011,8 @@
                 contamination: document.getElementById('contamination').value,
                 metric: document.getElementById("metric").value,
                 algorithm: document.getElementById("algorithm").value,
-                leafSize: document.getElementById('leafSize').value,
-                pValue: document.getElementById('pValue').value,
+                leafSize: document.getElementById('leafSize') ? document.getElementById('leafSize').value : undefined,
+                pValue: document.getElementById('pValue') ? document.getElementById('pValue').value : undefined,
             };
         } else {
             // iForest
@@ -1001,10 +1021,11 @@
                 data: fullData,
                 flags: flags,
                 areas: brushAreas,
-                contamination: document.getElementById('contamination').value,
+                contamination: document.getElementById('contaminationIf').value,
                 n_estimator: document.getElementById('nEstimators').value,
                 maxSamples: document.getElementById('maxSamples').value
             };
+            console.log(flags);
         }
 
         fetch(url, {
@@ -1024,7 +1045,21 @@
             .catch(error => {
                 console.error("error");
             });
-    })
+    }
+
+    // detect based on parameters set by the user
+    document.getElementById('detectAnomaliesBtn1').addEventListener('click', handleDetectAnomalies);
+    document.getElementById('detectAnomaliesBtn2').addEventListener('click', handleDetectAnomalies);
+
+
+    // Manual Param Setting Btn
+    document.getElementById("manualParamBtn").addEventListener("click", function () {
+        document.getElementById("manualParamContainer").style.display = "block";
+        this.style.display = "none";
+        const method = document.getElementById("anomalyMethod").value;
+        document.getElementById("lofParameters").style.display = method === "lof" ? "block" : "none";
+        document.getElementById("iforestParameters").style.display = method === "iforest" ? "block" : "none";
+    });
 
 
     // mark sequential anomalies
@@ -1033,6 +1068,8 @@
     let isSeqDragging = false;
     const sequentialHandlers = {};
     let markingStack = [];
+    let currentPhase = '';
+
 
     document.getElementById('markSequentialAnomaliesBtn').addEventListener('click', function () {
         if (this.classList.contains("btn-outline-primary")) {
@@ -1158,6 +1195,9 @@
             });
             chart2.setOption({graphic: []});
         }
+
+        hasAtLeastTwoOnes() ? enableAutoDetect() : disableAutoDetect();
+
     });
 
     // redo
@@ -1188,6 +1228,8 @@
         updateChart2();
         hideRevertSelectTrainingSetsBtn();
         hideLowerPanelSections();
+        currentPhase = 'SelectTrainSetsPhase';
+
 
         chart2.on("brush", function (params) {
             let areas = params.areas;
@@ -1203,6 +1245,7 @@
             updateBrushAreas();
         });
 
+
         chart2.getZr().off('contextmenu');
         document.getElementById('contextMenuList').removeEventListener('click', handleContextMenuClick);
         document.removeEventListener('click', hideContextMenu);
@@ -1210,7 +1253,6 @@
 
         sequentialMode = false;
         isSeqDragging = false;
-
     }
 
 
@@ -1261,6 +1303,7 @@
     });
 
 
+    // Mark Anomalies Phase
     function enableMarkAnomaliesPhase() {
         markingStack = [];
         document.getElementById('finshSelectTrainingSet').classList.add("d-none");
@@ -1271,6 +1314,7 @@
         enableRevertSelectTrainingSetsBtn();
         renameChart2Title('Mark Anomalies', 'Use the scrollbar or mouse wheel to navigate.');
         showLowerPanelSections();
+        currentPhase = 'MarkAnomaliesPhase';
 
 
         const seriesDataFull = [];
@@ -1296,10 +1340,11 @@
 
         chart2.dispatchAction({type: "brush", areas: areas});
 
+
         chart2.dispatchAction({
             type: "dataZoom",
             startValue: brushAreas[0].start,
-            endValue: (brushAreas[0].end - brushAreas[0].start),
+            endValue: brushAreas[0].end,
         });
 
 
@@ -1321,6 +1366,7 @@
                     showContextMenu(event.event);
                 }
             }
+
         });
 
 
@@ -1331,6 +1377,40 @@
         document.addEventListener('click', function () {
             hideContextMenu();
         });
+
+
+        // syncronize chart1 and chart2
+        let hideBrushTimeout;
+        chart2.on('dataZoom', function (params) {
+            if (currentPhase === 'MarkAnomaliesPhase') {
+                const startValue = chart2.getOption().dataZoom[0].startValue;
+                const endValue = chart2.getOption().dataZoom[0].endValue;
+
+                chart1.dispatchAction({
+                    type: 'brush',
+                    brushId: 'currentWindowBrush',
+                    areas: [{
+                        brushType: 'lineX',
+                        xAxisIndex: 0,
+                        coordRange: [startValue, endValue]
+                    }]
+                });
+
+                if (hideBrushTimeout) {
+                    clearTimeout(hideBrushTimeout);
+                }
+
+                hideBrushTimeout = setTimeout(() => {
+                    chart1.dispatchAction({
+                        type: 'brush',
+                        brushId: 'currentWindowBrush',
+                        areas: []
+                    });
+                }, 500);
+            }
+        });
+
+
     }
 
 

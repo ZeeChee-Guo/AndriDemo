@@ -48,8 +48,8 @@ def i_forest_with_hyperparameters(data, flags, areas, n_estimators, contaminatio
 
     all_data_points = np.array(all_data_points).reshape(-1, 1)
 
-    lof = IsolationForest(n_estimators=n_estimators, contamination=contamination,max_samples=max_samples)
-    predictions = lof.fit_predict(all_data_points)
+    i_forest = IsolationForest(n_estimators=n_estimators, contamination=contamination,max_samples=max_samples)
+    predictions = i_forest.fit_predict(all_data_points)
 
     for idx, point_idx in enumerate(all_indices):
         flags[point_idx] = (predictions[idx] == -1).astype(int)

@@ -11,7 +11,6 @@ def i_forest():
     flags = json_data.get('flags')
     areas = json_data.get('areas')
     if json_data.get('hyperparameters') == 0:
-        print(111)
         return iforest_without_hyperparameters(data, flags, areas)
     else:
         n_estimators = int(json_data.get('n_estimator', 100))

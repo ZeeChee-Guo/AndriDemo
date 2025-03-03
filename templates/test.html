@@ -22,7 +22,7 @@
     <script>
         var chart = echarts.init(document.getElementById('main'));
 
-        var startX, startY, isDrawing = false;
+        var startX, isDrawing = false;
         var rect = null;
         var graphicElements = [];
 
@@ -43,16 +43,16 @@
             if (event.event.button !== 0) return; // 只允许左键拖拽
             isDrawing = true;
             startX = event.offsetX;
-            startY = event.offsetY;
+
+            var chartHeight = chart.getHeight();  // 获取 ECharts 高度
 
             rect = {
                 type: 'rect',
-                shape: { x: startX, y: startY, width: 0, height: 0 },
+                shape: { x: startX, y: 0, width: 0, height: chartHeight },
                 style: { fill: 'rgba(0, 128, 255, 0.3)', stroke: 'blue' },
                 draggable: true,
-                ondrag: function (dx, dy) {
+                ondrag: function (dx) {
                     this.shape.x += dx;
-                    this.shape.y += dy;
                     chart.setOption({ graphic: graphicElements });
                 }
             };
@@ -61,15 +61,13 @@
             chart.setOption({ graphic: graphicElements });
         });
 
-        // 监听鼠标移动事件（动态调整矩形大小）
+        // 监听鼠标移动事件（动态调整矩形大小，固定高度）
         chart.getZr().on('mousemove', function (event) {
             if (!isDrawing || !rect) return;
 
             let width = event.offsetX - startX;
-            let height = event.offsetY - startY;
-
             rect.shape.width = width;
-            rect.shape.height = height;
+            rect.shape.height = chart.getHeight(); // 确保高度一直等于图表高度
 
             chart.setOption({ graphic: graphicElements });
         });
