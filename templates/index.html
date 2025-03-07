@@ -887,10 +887,10 @@
     // update anomalies numbers
     function updateAnomaliesNum() {
         const totalInBrush = fullData.reduce((count, _, i) => count + (isInBrushAreas(i) ? 1 : 0), 0);
-        const countOnes = flags.filter(value => value === 1).length;
-        const percentage = totalInBrush > 0 ? ((countOnes / totalInBrush) * 100).toFixed(4) + '%' : '0.0000%';
+        const countAnomalies = flags.filter(value => value === 1 || value === 3).length;
+        const percentage = totalInBrush > 0 ? ((countAnomalies / totalInBrush) * 100).toFixed(4) + '%' : '0.0000%';
 
-        document.getElementById('anomalyCount').textContent = `${countOnes} (${percentage})`;
+        document.getElementById('anomalyCount').textContent = `${countAnomalies} (${percentage})`;
     }
 
 
@@ -1108,7 +1108,7 @@
                 button.classList.remove("btn-outline-success");
                 button.classList.add("btn-outline-primary");
             }
-        }else if(buttonId === 'markNormalPointsBtn'){
+        } else if (buttonId === 'markNormalPointsBtn') {
             if (button.classList.contains("btn-outline-primary")) {
                 button.textContent = "Finish Mark Normal Points";
                 button.classList.remove("btn-outline-primary");
@@ -1208,14 +1208,14 @@
 
     // mark sequential anomalies
     document.getElementById('markSequentialAnomaliesBtn').addEventListener('click', function () {
-        toggleSequentialMode('markSequentialAnomaliesBtn', 1, point_dic[1]['color'], 'orange', markingAnomaliesStack);
+        toggleSequentialMode('markSequentialAnomaliesBtn', 1, 'rgba(255, 165, 0, 0.5)', 'orange', markingAnomaliesStack);
     });
 
 
     // mark anomalies redo
     document.getElementById('redoSequentialAnomaliesBtn').addEventListener('click', function () {
         if (markingAnomaliesStack.length > 0) {
-            const lastMark = markingStack.pop();
+            const lastMark = markingAnomaliesStack.pop();
             for (let i = lastMark.start; i <= lastMark.end; i++) {
                 if (i >= 0 && i < fullData.length) {
                     flags[i] = 0;

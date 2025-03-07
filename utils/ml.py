@@ -95,8 +95,7 @@ def lof_without_hyperparameters(data, flags, areas):
     return best_detected_flags.tolist()
 
 
-
-def iforest_without_hyperparameters(data, flags, areas):
+def i_forest_without_hyperparameters(data, flags, areas):
     data = np.array(data)
     flags = np.array(flags)
 
@@ -113,25 +112,20 @@ def iforest_without_hyperparameters(data, flags, areas):
 
     all_data_points = np.array(all_data_points).reshape(-1, 1)
 
-    n_estimators_range = [50, 100, 200, 300]
-    contamination_range = [0.005, 0.01, 0.02, 0.05, 0.1, 0.2]
-    max_samples_range = ['auto', 0.5, 0.8, 1.0]
+    contamination = max(0.01, min(0.1, np.sum(flags == 1) / len(flags)))*1.2
 
-    best_detected_flags = np.zeros_like(flags)
+    iforest = IsolationForest(n_estimators=150, contamination=contamination, max_samples='auto', random_state=42)
+    predictions = iforest.fit_predict(all_data_points)
 
-    for n_estimators, contamination, max_samples in product(n_estimators_range, contamination_range, max_samples_range):
-        iforest = IsolationForest(n_estimators=n_estimators, contamination=contamination, max_samples=max_samples)
-        predictions = iforest.fit_predict(all_data_points)
+    detected_flags = flags.copy()
+    for idx, point_idx in enumerate(all_indices):
+        if flags[point_idx] != 1:
+            if predictions[idx] == -1:
+                detected_flags[point_idx] = 3
 
-        detected_flags = np.zeros_like(flags)
-        for idx, point_idx in enumerate(all_indices):
-            detected_flags[point_idx] = (predictions[idx] == -1).astype(int)
+    return detected_flags.tolist()
 
 
-        if np.all((flags == 1) <= (detected_flags == 1)):
-            return detected_flags.tolist()
-
-    return best_detected_flags.tolist()
 
 
 
