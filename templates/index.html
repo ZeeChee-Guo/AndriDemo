@@ -173,52 +173,66 @@
                 </button>
             </div>
 
-            <!-- Section 1: Manual Marking -->
-            <div class="p-2 bg-light border rounded small d-none mb-1" id="manualMarkingSection">
+            <div class="marking-sections p-2 border rounded d-none" id="threeMethods">
+                <h4 class="text-center mb-3">Mark Anomalies:</h4>
+                <!-- Section 1: Manual Marking -->
+                <div class="p-2 bg-light border rounded small mb-1" id="manualMarkingSection">
+                    <p class="text-muted text-center mb-1">
+                        <strong>Manual Marking: </strong>Right-click to mark a point as an anomaly
+                    </p>
+                </div>
+
+                <!-- Section 2: Threshold-Based Marking -->
+                <div class="p-2 border rounded small mb-1" id="thresholdMarkingSection">
+                    <p class="text-muted mb-2">
+                        <strong>Threshold-Based Marking: </strong>Points are anomalies if they fall outside the range
+                    </p>
+                    <div class="d-flex align-items-center mb-1">
+                        <label for="anomalyUpperBound" class="form-label mb-0 me-2">Upper Bound:</label>
+                        <input type="number" class="form-control form-control-sm me-3" id="anomalyUpperBound"
+                               placeholder="Enter upper bound" step="0.001">
+                        <label for="anomalyLowerBound" class="form-label mb-0 me-2">Lower Bound:</label>
+                        <input type="number" class="form-control form-control-sm" id="anomalyLowerBound"
+                               placeholder="Enter lower bound" step="0.001">
+                    </div>
+                    <div class="text-center">
+                        <button id="selectAnomaliesPanelBtn" class="btn btn-outline-primary btn-sm"
+                                onclick="thresholdSelect()">Apply
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Section 3: Mark Sequential Anomalies -->
+                <div class="p-2 bg-light border rounded small d-none" id="sequentialAnomaliesSection">
+
+                    <p class="text-muted text-center mb-1">
+                        <strong>Mark Sequential Anomalies: </strong>Click the button below and drag out an area on the
+                        chart to mark as sequential anomalies.
+                    </p>
+                    <div class="text-center">
+                        <button id="markSequentialAnomaliesBtn" class="btn btn-outline-primary btn-sm">Mark Sequential
+                            Anomalies
+                        </button>
+                        <button id="redoSequentialAnomaliesBtn" class="btn btn-outline-danger btn-sm">Redo</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-2 border rounded text-center mt-2 d-none" id="autoDetectSection">
                 <p class="text-muted text-center mb-1">
-                    <strong>Manual Marking: </strong>Right-click to mark at least one point, then click "Auto Detect" to
-                    identify anomalies automatically.
+                    Automatic marking anomalies
                 </p>
-                <div class="text-center">
-                    <button id="autoDetectBtn" class="btn btn-outline-primary btn-sm" disabled>Auto Detect</button>
-                </div>
+                <button id="autoDetectBtn" class="btn btn-outline-primary btn-sm">Auto Detect</button>
             </div>
 
-            <!-- Section 2: Threshold-Based Marking -->
-            <div class="p-2 border rounded small d-none mb-1" id="thresholdMarkingSection">
-                <p class="text-muted mb-2">
-                    <strong>Threshold-Based Marking: </strong>Points are anomalies if they fall outside
-                    the range [lower bound, upper bound], inclusive.
-                </p>
-                <div class="d-flex align-items-center mb-1">
-                    <label for="anomalyUpperBound" class="form-label mb-0 me-2">Upper Bound:</label>
-                    <input type="number" class="form-control form-control-sm me-3" id="anomalyUpperBound"
-                           placeholder="Enter upper bound" step="0.001">
-                    <label for="anomalyLowerBound" class="form-label mb-0 me-2">Lower Bound:</label>
-                    <input type="number" class="form-control form-control-sm" id="anomalyLowerBound"
-                           placeholder="Enter lower bound" step="0.001">
-                </div>
-                <div class="text-center">
-                    <button id="selectAnomaliesPanelBtn" class="btn btn-outline-primary btn-sm"
-                            onclick="thresholdSelect()">Apply
-                    </button>
-                </div>
-            </div>
-
-            <!-- Section 3: Mark Sequential Anomalies -->
-            <div class="p-2 bg-light border rounded small d-none" id="sequentialAnomaliesSection">
+            <div class="p-2 border rounded mt-2 d-none" id="markAsNormalSection">
                 <p class="text-muted text-center mb-1">
-                    <strong>Mark Sequential Anomalies: </strong>Click the button below and drag out an area on the chart
-                    to mark as sequential anomalies.
+                    Click the button below and drag out an area on the chart to mark as normal points
                 </p>
                 <div class="text-center">
-                    <button id="markSequentialAnomaliesBtn" class="btn btn-outline-primary btn-sm">Mark Sequential
-                        Anomalies
-                    </button>
-                    <button id="redoSequentialAnomaliesBtn" class="btn btn-outline-danger btn-sm">Redo</button>
+                    <button id="markNormalPointsBtn" class="btn btn-outline-primary btn-sm">Mark Normal Points</button>
                 </div>
             </div>
-
         </div>
 
     </div>
@@ -228,6 +242,7 @@
 <div id="contextMenu">
     <ul id="contextMenuList">
         <li data-anomaly="point">Mark as Point Anomaly</li>
+        <li data-anomaly="unknown">Mark as Unknown</li>
         <li data-anomaly="normal">Mark as Normal</li>
     </ul>
 </div>
@@ -343,6 +358,15 @@
 
 
 <script>
+    // flags: 0: unknown, 1: anomaly, 2: normal, 3: anomaly marked by system
+    point_dic = {
+        0: {'size': 5, 'symbol': 'emptyCircle', 'color': 'rgba(100, 149, 237, 0.8)'},
+        1: {'size': 9, 'symbol': 'circle', 'color': 'rgba(255, 30, 0, 0.9)'},
+        2: {'size': 9, 'symbol': 'circle', 'color': 'rgba(60, 179, 113, 0.9)'},
+        3: {'size': 9, 'symbol': 'circle', 'color': 'rgba(255, 165, 0, 0.9)'}
+    }
+
+
     let chart1, chart2;
     let fullData, flags, brushAreas = [];
     let chart1Title = "Full Data Overview";
@@ -398,21 +422,21 @@
                     throttleDelay: 1,
                     transformable: false,
                     brushStyle: {
-                        color: "rgba(255, 173, 177, 0.7)", // 浅粉色
+                        color: "rgba(255, 173, 177, 0.7)",
                         lineWidth: 1,
                         opacity: 0.7,
                     },
                 },
                 {
-                    id: 'currentWindowBrush', // 用于当前窗口区域
+                    id: 'currentWindowBrush',
                     xAxisIndex: 0,
                     brushType: 'lineX',
-                    brushMode: 'single', // 当前窗口只有一个区域
+                    brushMode: 'single',
                     throttleType: 'debounce',
                     throttleDelay: 1,
                     transformable: false,
                     brushStyle: {
-                        color: "rgba(129, 216, 208, 0.7)", // 蒂芙尼蓝色
+                        color: "rgba(129, 216, 208, 0.7)",
                         lineWidth: 1,
                         opacity: 0.7,
                     },
@@ -852,9 +876,12 @@
     }
 
     function hideLowerPanelSections() {
+        document.getElementById("threeMethods").classList.add("d-none");
         document.getElementById("manualMarkingSection").classList.add("d-none");
         document.getElementById("thresholdMarkingSection").classList.add("d-none");
         document.getElementById("sequentialAnomaliesSection").classList.add("d-none");
+        document.getElementById("autoDetectSection").classList.add("d-none");
+        document.getElementById("markAsNormalSection").classList.add("d-none");
     }
 
     // update anomalies numbers
@@ -880,19 +907,21 @@
                     data: seriesData,
                     sampling: 'average',
                     symbol: function (params) {
-                        return flags[params[0]] === 1 ? 'circle' : 'emptyCircle';
+                        return point_dic[flags[params[0]]]['symbol']
                     },
                     symbolSize: function (params) {
-                        return flags[params[0]] === 1 ? 9 : 5;
+                        return point_dic[flags[params[0]]]['size']
                     },
                     itemStyle: {
                         color: function (params) {
-                            return flags[params.dataIndex] === 1 ? 'rgba(255, 30, 0, 0.9)' : 'rgba(100, 149, 237, 0.8)';
+                            return point_dic[flags[params.dataIndex]]['color']
                         },
                     },
                 },
             ],
         });
+
+        updateAnomaliesNum();
     }
 
 
@@ -900,14 +929,13 @@
     function handleContextMenuClick(e) {
         const anomalyOption = e.target.getAttribute('data-anomaly');
         if (anomalyOption && currentDataIndex != null) {
-            if (anomalyOption === 'normal') {
+            if (anomalyOption === 'unknown') {
                 flags[currentDataIndex] = 0;
-            } else {
+            } else if (anomalyOption === 'point') {
                 flags[currentDataIndex] = 1;
+            } else if (anomalyOption === 'normal') {
+                flags[currentDataIndex] = 2;
             }
-
-            // enable/disable auto detect button
-            hasAtLeastTwoOnes() ? enableAutoDetect() : disableAutoDetect();
 
             markAnomalies();
         }
@@ -938,13 +966,8 @@
             }
         }
 
-        const countOnes = flags.reduce((count, value) => count + (value === 1 ? 1 : 0), 0);
-        const percentage = totalInBrush > 0 ? ((countOnes / totalInBrush) * 100).toFixed(4) + '%' : '0.0000%';
+        updateAnomaliesNum();
 
-        document.getElementById('anomalyCount').textContent = `${countOnes} (${percentage})`;
-
-
-        hasAtLeastTwoOnes() ? enableAutoDetect() : disableAutoDetect();
         markAnomalies();
     }
 
@@ -1067,29 +1090,41 @@
     let seqDragStart = null;
     let isSeqDragging = false;
     const sequentialHandlers = {};
-    let markingStack = [];
+    let markingAnomaliesStack = [];
+    let markingNormalStack = [];
     let currentPhase = '';
 
 
-    document.getElementById('markSequentialAnomaliesBtn').addEventListener('click', function () {
-        if (this.classList.contains("btn-outline-primary")) {
-            this.textContent = "Finish Mark Sequential Anomalies";
-            this.classList.remove("btn-outline-primary");
-            this.classList.add("btn-outline-success");
-        } else {
-            this.textContent = "Mark Sequential Anomalies";
-            this.classList.remove("btn-outline-success");
-            this.classList.add("btn-outline-primary");
+    // toggle sequential mode
+    function toggleSequentialMode(buttonId, flagType, fillColor, strokeColor, stack) {
+        let button = document.getElementById(buttonId);
+        if (buttonId === 'markSequentialAnomaliesBtn') {
+            if (button.classList.contains("btn-outline-primary")) {
+                button.textContent = "Finish Mark Sequential Anomalies";
+                button.classList.remove("btn-outline-primary");
+                button.classList.add("btn-outline-success");
+            } else {
+                button.textContent = "Mark Sequential Anomalies";
+                button.classList.remove("btn-outline-success");
+                button.classList.add("btn-outline-primary");
+            }
+        }else if(buttonId === 'markNormalPointsBtn'){
+            if (button.classList.contains("btn-outline-primary")) {
+                button.textContent = "Finish Mark Normal Points";
+                button.classList.remove("btn-outline-primary");
+                button.classList.add("btn-outline-success");
+            } else {
+                button.textContent = "Mark Normal Points";
+                button.classList.remove("btn-outline-success");
+                button.classList.add("btn-outline-primary");
+            }
         }
 
 
         sequentialMode = !sequentialMode;
         if (sequentialMode) {
             chart2.setOption({
-                dataZoom: [{
-                    type: 'inside',
-                    disabled: true
-                }]
+                dataZoom: [{type: 'inside', disabled: true}]
             });
 
             let gridRect = chart2.getModel().getComponent('grid').coordinateSystem._rect;
@@ -1105,24 +1140,14 @@
                     return;
                 }
 
-
                 isSeqDragging = true;
                 seqDragStart = e.offsetX;
                 chart2.setOption({
                     graphic: [{
                         id: 'seqRect',
                         type: 'rect',
-                        shape: {
-                            x: seqDragStart,
-                            y: gridTop,
-                            width: 0,
-                            height: seqGridHeight
-                        },
-                        style: {
-                            fill: 'rgba(255, 165, 0, 0.5)',
-                            stroke: 'orange',
-                            lineWidth: 1
-                        }
+                        shape: {x: seqDragStart, y: gridTop, width: 0, height: seqGridHeight},
+                        style: {fill: fillColor, stroke: strokeColor, lineWidth: 1}
                     }]
                 });
             });
@@ -1147,38 +1172,26 @@
                 let startPixel = Math.min(seqDragStart, currentX);
                 let endPixel = Math.max(seqDragStart, currentX);
 
-
                 let midY = gridTop + seqGridHeight / 2;
-                let startCoord = chart2.convertFromPixel({seriesIndex: 0}, [startPixel, midY])[0];
-                let endCoord = chart2.convertFromPixel({seriesIndex: 0}, [endPixel, midY])[0];
-                startCoord = Math.round(startCoord);
-                endCoord = Math.round(endCoord);
+                let startCoord = Math.round(chart2.convertFromPixel({seriesIndex: 0}, [startPixel, midY])[0]);
+                let endCoord = Math.round(chart2.convertFromPixel({seriesIndex: 0}, [endPixel, midY])[0]);
+
                 for (let i = startCoord; i <= endCoord; i++) {
                     if (i >= 0 && i < fullData.length) {
-                        flags[i] = 1;
+                        flags[i] = flagType;
                     }
                 }
-                chart2.setOption(
-                    {
-                        graphic: [{
-                            id: 'seqRect',
-                            type: 'rect',
-                            shape: {
-                                x: -1,
-                                y: gridTop,
-                                width: 0.0001,
-                                height: seqGridHeight
-                            },
-                            style: {
-                                fill: 'rgba(255, 165, 0, 0.5)',
-                                stroke: 'orange',
-                                lineWidth: 1
-                            }
-                        }]
-                    }
-                );
 
-                markingStack.push({start: startCoord, end: endCoord});
+                chart2.setOption({
+                    graphic: [{
+                        id: 'seqRect',
+                        type: 'rect',
+                        shape: {x: -1, y: gridTop, width: 0.0001, height: seqGridHeight},
+                        style: {fill: fillColor, stroke: strokeColor, lineWidth: 1}
+                    }]
+                });
+
+                stack.push({start: startCoord, end: endCoord});
                 markAnomalies();
                 updateAnomaliesNum();
             });
@@ -1187,22 +1200,21 @@
             chart2.getZr().off('mousedown', sequentialHandlers.mousedown);
             chart2.getZr().off('mousemove', sequentialHandlers.mousemove);
             chart2.getZr().off('mouseup', sequentialHandlers.mouseup);
-            chart2.setOption({
-                dataZoom: [{
-                    type: 'inside',
-                    disabled: false
-                }]
-            });
+            chart2.setOption({dataZoom: [{type: 'inside', disabled: false}]});
             chart2.setOption({graphic: []});
         }
+    }
 
-        hasAtLeastTwoOnes() ? enableAutoDetect() : disableAutoDetect();
 
+    // mark sequential anomalies
+    document.getElementById('markSequentialAnomaliesBtn').addEventListener('click', function () {
+        toggleSequentialMode('markSequentialAnomaliesBtn', 1, point_dic[1]['color'], 'orange', markingAnomaliesStack);
     });
 
-    // redo
+
+    // mark anomalies redo
     document.getElementById('redoSequentialAnomaliesBtn').addEventListener('click', function () {
-        if (markingStack.length > 0) {
+        if (markingAnomaliesStack.length > 0) {
             const lastMark = markingStack.pop();
             for (let i = lastMark.start; i <= lastMark.end; i++) {
                 if (i >= 0 && i < fullData.length) {
@@ -1212,8 +1224,14 @@
             markAnomalies();
             updateAnomaliesNum();
         } else {
-            alert("No more sequntail anomalies left");
+            alert("No more sequential anomalies left");
         }
+    });
+
+
+    // marl normal points
+    document.getElementById('markNormalPointsBtn').addEventListener('click', function () {
+        toggleSequentialMode('markNormalPointsBtn', 2, point_dic[2]['color'], 'green', markingNormalStack);
     });
 
 
@@ -1269,32 +1287,6 @@
         document.getElementById('contextMenu').style.display = 'none';
     }
 
-    function hasAtLeastTwoOnes() {
-        let count = 0;
-        for (let i = 0; i < flags.length; i++) {
-            if (flags[i] === 1) {
-                count++;
-                if (count >= 2) return true;
-            }
-        }
-        return false;
-    }
-
-
-    // auto detect btn
-    function enableAutoDetect() {
-        let button = document.getElementById("autoDetectBtn");
-        button.disabled = false;
-        button.classList.replace("btn-outline-primary", "btn-primary");
-        button.style.boxShadow = "0 0 8px rgba(0, 123, 255, 0.5)";
-    }
-
-    function disableAutoDetect() {
-        let button = document.getElementById("autoDetectBtn");
-        button.disabled = true;
-        button.classList.replace("btn-primary", "btn-outline-primary");
-        button.style.boxShadow = "none";
-    }
 
     // Bind the Mark Anomalies button, clicking it will display the modal
     document.getElementById('autoDetectBtn').addEventListener('click', function () {
@@ -1306,6 +1298,9 @@
     // Mark Anomalies Phase
     function enableMarkAnomaliesPhase() {
         markingStack = [];
+        document.getElementById('threeMethods').classList.remove('d-none');
+        document.getElementById('autoDetectSection').classList.remove('d-none');
+        document.getElementById('markAsNormalSection').classList.remove('d-none');
         document.getElementById('finshSelectTrainingSet').classList.add("d-none");
         document.getElementById('trainDatasetStats').classList.add('d-none');
         document.getElementById('trainingSetRecords').innerText =
@@ -1379,7 +1374,7 @@
         });
 
 
-        // syncronize chart1 and chart2
+        // synchronize chart1 and chart2
         let hideBrushTimeout;
         chart2.on('dataZoom', function (params) {
             if (currentPhase === 'MarkAnomaliesPhase') {
