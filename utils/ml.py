@@ -2,6 +2,13 @@ import numpy as np
 from sklearn.neighbors import LocalOutlierFactor
 from itertools import product
 from sklearn.ensemble import IsolationForest
+from sklearn.preprocessing import MinMaxScaler
+
+from external.a2d2.util.TSB_AD.models.norma import NORMA
+from external.a2d2.util.util_a2d2 import find_length
+
+import warnings
+import pandas as pd
 
 
 def lof_with_hyperparameters(data, flags, areas, n_neighbors, contamination, metric, algorithm, leaf_size, p_value):
@@ -124,6 +131,63 @@ def i_forest_without_hyperparameters(data, flags, areas):
                 detected_flags[point_idx] = 3
 
     return detected_flags.tolist()
+
+
+def norm_a(data, flags, areas):
+    warnings.simplefilter("ignore", pd.errors.PerformanceWarning)
+
+    data_for_finding_pattern = np.array(data, dtype=float).flatten()
+    pattern_length = find_length(data_for_finding_pattern)
+
+    data = np.array(data, dtype=float).flatten()
+
+    clf_off = NORMA(pattern_length=pattern_length, nm_size=3 * pattern_length,
+                    percentage_sel=1, normalize='z-norm')
+    clf_off.fit(data)
+    scores = np.array(clf_off.decision_scores_)
+
+    flags = np.array(flags)
+
+    results = []
+    for area in areas:
+        start = area['start']
+        end = area['end']
+
+        area_scores = scores[start:end + 1]
+        area_flags = flags[start:end + 1]
+
+        if np.any(area_flags == 1):
+            threshold = np.min(area_scores[area_flags == 1])
+        else:
+            threshold = np.percentile(area_scores, 95)
+
+        anomaly_mask = area_scores >= threshold
+        num_anomalies = np.sum(anomaly_mask)
+
+        for i, is_anomaly in enumerate(anomaly_mask):
+            if is_anomaly and flags[start + i] != 1:
+                flags[start + i] = 3
+
+        avg_score = np.mean(area_scores)
+        std_score = np.std(area_scores)
+        anomaly_ratio = num_anomalies / len(area_scores) if len(area_scores) > 0 else 0
+
+        results.append({
+            'start': start,
+            'end': end,
+            'threshold': float(threshold),
+            'avg_score': float(avg_score),
+            'std_score': float(std_score),
+            'num_anomalies': int(num_anomalies),
+            'anomaly_ratio': float(anomaly_ratio),
+        })
+
+        return {'results': results, 'flags': flags.tolist()}
+
+
+
+
+
 
 
 

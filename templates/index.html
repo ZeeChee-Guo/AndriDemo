@@ -157,7 +157,8 @@
                  id="markAnomaliesTitle">
                 <h6 class="text-dark fw-bold mb-1">Mark Anomalies:</h6>
                 <p class="text-muted mb-2">
-                    Use the options below to mark anomalies manually, apply threshold-based marking, mark sequential anomalies,
+                    Use the options below to mark anomalies manually, apply threshold-based marking, mark sequential
+                    anomalies,
                     or detect anomalies automatically.
                 </p>
                 <button id="finshMarkAnomaliesBtn" class="btn btn-outline-success btn-sm w-50 mx-auto"
@@ -169,6 +170,8 @@
 
         </div>
 
+
+        <!-- Lower Panel Section -->
         <div class="panel-section" id="panelSection">
             <div class="d-flex gap-1 p-1 w-100">
                 <button id="addTrainingSet" class="btn btn-outline-secondary btn-sm w-50 d-none"
@@ -204,7 +207,7 @@
 
 
             <div class="marking-sections p-2 border border-dark rounded shadow-sm d-none" id="threeMethods">
-                <h4 class="text-center mb-3">Mark Anomalies Options:</h4>
+                <h4 class="text-center mb-3">Manually Mark Anomalies Options:</h4>
                 <!-- Section 1: Manual Marking -->
                 <div class="p-2 bg-light border rounded small mb-1" id="manualMarkingSection">
                     <p class="text-muted text-center mb-1">
@@ -249,20 +252,24 @@
             </div>
 
             <div class="p-2 border border-dark rounded shadow-sm mt-4 d-none" id="markAsNormalSection">
+                <h4 class="text-center mb-1">Mark Normal Point(s):</h4>
                 <p class="text-muted text-center mb-1">
                     Click the button below and drag out an area on the chart to mark as normal points
                 </p>
                 <div class="text-center">
                     <button id="markNormalPointsBtn" class="btn btn-outline-primary btn-sm">Mark Normal Points</button>
+                    <button id="redoSequentialNormalBtn" class="btn btn-outline-danger btn-sm">Redo</button>
                 </div>
             </div>
 
 
-            <div class="p-2 bg-light border border-dark rounded shadow-sm mt-4 text-center d-none" id="autoDetectSection">
+            <div class="p-2 bg-light border border-dark rounded shadow-sm mt-4 text-center d-none"
+                 id="autoDetectSection">
+                <h4 class="text-center mb-1">Mark Anomalies Automatically:</h4>
                 <p class="text-muted text-center mb-1">
                     Automatic marking anomalies
                 </p>
-                <button id="autoDetectBtn" class="btn btn-outline-primary btn-sm">Auto Detect</button>
+                <button id="autoDetectBtn" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#autoDetectAnomaliesModal">Auto Detect</button>
             </div>
 
 
@@ -281,14 +288,37 @@
 </div>
 
 
+
+<!-- Chart1 Navigation Modal -->
+<div class="modal fade" id="chart1Modal" tabindex="-1" aria-labelledby="chart1ModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="chart1ModalLabel">Index:
+                <span id="chart1IndexValue"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body">
+                <div class="d-flex justify-content-between mt-3">
+                    <button id="navigationAddTrainingSetBtn" data-bs-dismiss="modal" class="btn btn-primary d-none">Add a New Training Set
+                        Here
+                    </button>
+                    <button id="navigateToBtn" data-bs-dismiss="modal" class="btn btn-success">Navigate Here</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
 <!-- Auto detect modal -->
-<div class="modal fade" id="autoDetectAnomaliesModal" tabindex="-1" aria-labelledby="autoDetectAnomaliesModalLabel"
-     aria-hidden="true">
+<div class="modal fade" id="autoDetectAnomaliesModal" tabindex="-1" aria-labelledby="autoDetectAnomaliesModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="autoDetectAnomaliesModalLabel">Auto Detect Anomalies</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button"  class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
 
             <div class="modal-body">
@@ -390,25 +420,7 @@
 </div>
 
 
-<!-- Chart1 Navigation Modal -->
-<div class="modal fade" id="chart1Modal" tabindex="-1" aria-labelledby="chart1ModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <p class="mb-0">Index: <span id="modalIndex"></span></p>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="d-flex justify-content-between mt-3">
-                    <button id="navigationAddTrainingSetBtn" class="btn btn-primary d-none">Add a New Training Set
-                        Here
-                    </button>
-                    <button id="navigateToBtn" class="btn btn-success">Navigate Here</button>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+
 
 
 <script>
@@ -430,10 +442,11 @@
     let sequentialMode = false;
     let seqDragStart = null;
     let isSeqDragging = false;
-    const sequentialHandlers = {};
+    let sequentialHandlers = {};
     let markingAnomaliesStack = [];
     let markingNormalStack = [];
     let currentPhase = ''; // 'SelectTrainSetsPhase', 'MarkAnomaliesPhase'
+    let chart1ModalInstance = null;
 
 
     function initCharts() {
@@ -650,11 +663,10 @@
 
     }
 
-    // // chart1 navigation: show modal
+    // chart1 navigation: show modal
     function showModal(index) {
-        document.getElementById('modalIndex').textContent = index;
-        const modal = new bootstrap.Modal(document.getElementById('chart1Modal'));
-        modal.show();
+         document.getElementById('chart1IndexValue').textContent = index;
+        chart1ModalInstance.show();
     }
 
     // chart1 navigation: add a new training set at an index
@@ -686,19 +698,22 @@
     window.onload = () => {
         initCharts();
 
-        // // chart1 navigation
+        // chart1 navigation
         document.getElementById('navigationAddTrainingSetBtn').addEventListener('click', function () {
-            const index = parseInt(document.getElementById('modalIndex').textContent);
+            const index = parseInt(document.getElementById('chart1IndexValue').textContent);
             addTrainingSetAt(index);
-            bootstrap.Modal.getInstance(document.getElementById('chart1Modal')).hide();
+
+
         });
 
         // chart1 navigation
         document.getElementById('navigateToBtn').addEventListener('click', function () {
-            const index = parseInt(document.getElementById('modalIndex').textContent);
+            const index = parseInt(document.getElementById('chart1IndexValue').textContent);
             navigateTo(index);
-            bootstrap.Modal.getInstance(document.getElementById('chart1Modal')).hide();
         });
+
+        // init modals
+        chart1ModalInstance = new bootstrap.Modal(document.getElementById('chart1Modal'));
     };
 
 
@@ -714,6 +729,17 @@
             alert("Only ARFF parsing shown in this demo.");
             return;
         }
+
+        initCharts();
+        flags = [];
+        brushAreas = [];
+        sequentialMode = false;
+        seqDragStart = null;
+        isSeqDragging = false;
+        sequentialHandlers = {};
+        markingAnomaliesStack = [];
+        markingNormalStack = [];
+        currentPhase = '';
 
         enableSelectTrainSetsPhase();
     });
@@ -1177,7 +1203,8 @@
         })
             .then(response => response.json())
             .then(data => {
-                flags = data;
+                alert(data.results);
+                flags = data.flags;
                 markAnomalies();
                 updateAnomaliesNum();
                 bootstrap.Modal.getInstance(document.getElementById('autoDetectAnomaliesModal')).hide();
@@ -1219,7 +1246,6 @@
                 n_estimator: document.getElementById('nEstimators').value,
                 maxSamples: document.getElementById('maxSamples').value
             };
-            console.log(flags);
         }
 
         fetch(url, {
@@ -1261,28 +1287,49 @@
         let button = document.getElementById(buttonId);
         if (buttonId === 'markSequentialAnomaliesBtn') {
             if (button.classList.contains("btn-outline-primary")) {
+                sequentialMode = true;
+                let otherButton1 = document.getElementById('markNormalPointsBtn');
+                otherButton1.textContent = "Mark Normal Points";
+                otherButton1.classList.remove("btn-outline-success");
+                otherButton1.classList.add("btn-outline-primary");
                 button.textContent = "Finish Mark Sequential Anomalies";
                 button.classList.remove("btn-outline-primary");
                 button.classList.add("btn-outline-success");
             } else {
+                sequentialMode = false;
                 button.textContent = "Mark Sequential Anomalies";
                 button.classList.remove("btn-outline-success");
                 button.classList.add("btn-outline-primary");
             }
         } else if (buttonId === 'markNormalPointsBtn') {
             if (button.classList.contains("btn-outline-primary")) {
+                sequentialMode = true;
+                let otherButton1 = document.getElementById('markSequentialAnomaliesBtn');
+                otherButton1.textContent = "Mark Sequential Anomalies";
+                otherButton1.classList.remove("btn-outline-success");
+                otherButton1.classList.add("btn-outline-primary");
                 button.textContent = "Finish Mark Normal Points";
                 button.classList.remove("btn-outline-primary");
                 button.classList.add("btn-outline-success");
             } else {
+                sequentialMode = false;
                 button.textContent = "Mark Normal Points";
                 button.classList.remove("btn-outline-success");
                 button.classList.add("btn-outline-primary");
             }
         }
 
+        // 在添加新监听器前移除旧监听器
+        if (sequentialHandlers.mousedown) {
+            chart2.getZr().off('mousedown', sequentialHandlers.mousedown);
+        }
+        if (sequentialHandlers.mousemove) {
+            chart2.getZr().off('mousemove', sequentialHandlers.mousemove);
+        }
+        if (sequentialHandlers.mouseup) {
+            chart2.getZr().off('mouseup', sequentialHandlers.mouseup);
+        }
 
-        sequentialMode = !sequentialMode;
         if (sequentialMode) {
             chart2.setOption({
                 dataZoom: [{type: 'inside', disabled: true}]
@@ -1300,7 +1347,6 @@
                 if (e.offsetX < gridLeft || e.offsetX > gridRight || e.offsetY < gridTop || e.offsetY > gridBottom || !sequentialMode) {
                     return;
                 }
-
                 isSeqDragging = true;
                 seqDragStart = e.offsetX;
                 chart2.setOption({
@@ -1356,7 +1402,6 @@
                 markAnomalies();
                 updateAnomaliesNum();
             });
-
         } else {
             chart2.getZr().off('mousedown', sequentialHandlers.mousedown);
             chart2.getZr().off('mousemove', sequentialHandlers.mousemove);
@@ -1369,7 +1414,7 @@
 
     // mark sequential anomalies
     document.getElementById('markSequentialAnomaliesBtn').addEventListener('click', function () {
-        toggleSequentialMode('markSequentialAnomaliesBtn', 1, 'rgba(255, 165, 0, 0.5)', 'orange', markingAnomaliesStack);
+        toggleSequentialMode('markSequentialAnomaliesBtn', 1, point_dic[3]['color'], 'orange', markingAnomaliesStack);
     });
 
 
@@ -1390,9 +1435,26 @@
     });
 
 
-    // marl normal points
+    // mark normal points
     document.getElementById('markNormalPointsBtn').addEventListener('click', function () {
         toggleSequentialMode('markNormalPointsBtn', 2, point_dic[2]['color'], 'green', markingNormalStack);
+    });
+
+
+    // mark normal redo
+    document.getElementById('redoSequentialNormalBtn').addEventListener('click', function () {
+        if (markingNormalStack.length > 0) {
+            const lastMark = markingNormalStack.pop();
+            for (let i = lastMark.start; i <= lastMark.end; i++) {
+                if (i >= 0 && i < fullData.length) {
+                    flags[i] = 0;
+                }
+            }
+            markAnomalies();
+            updateAnomaliesNum();
+        } else {
+            alert("No more normal points left");
+        }
     });
 
 
@@ -1451,13 +1513,6 @@
     function hideContextMenu() {
         document.getElementById('contextMenu').style.display = 'none';
     }
-
-
-    // Bind the Mark Anomalies button, clicking it will display the modal
-    document.getElementById('autoDetectBtn').addEventListener('click', function () {
-        let modal = new bootstrap.Modal(document.getElementById('autoDetectAnomaliesModal'));
-        modal.show();
-    });
 
 
     // Mark Anomalies Phase
@@ -1542,6 +1597,7 @@
         });
 
     }
+
 
 
 </script>

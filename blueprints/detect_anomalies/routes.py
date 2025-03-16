@@ -1,7 +1,7 @@
 from . import detect_anomalies_bp
 from flask import request
 from utils.ml import (lof_with_hyperparameters, lof_without_hyperparameters,
-                      i_forest_without_hyperparameters, i_forest_with_hyperparameters)
+                      i_forest_without_hyperparameters, i_forest_with_hyperparameters, norm_a)
 
 
 @detect_anomalies_bp.route('i_forest', methods=['POST'])
@@ -11,7 +11,7 @@ def i_forest():
     flags = json_data.get('flags')
     areas = json_data.get('areas')
     if json_data.get('hyperparameters') == 0:
-        return i_forest_without_hyperparameters(data, flags, areas)
+        return norm_a(data, flags, areas)
     else:
         n_estimators = int(json_data.get('n_estimator', 100))
         contamination = float(json_data.get('contamination', 0.1))
