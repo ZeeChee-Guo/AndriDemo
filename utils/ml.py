@@ -1,6 +1,7 @@
 import numpy as np
 from sklearn.neighbors import LocalOutlierFactor
 from itertools import product
+from joblib import Memory
 from sklearn.ensemble import IsolationForest
 from sklearn.preprocessing import MinMaxScaler
 
@@ -9,6 +10,72 @@ from external.a2d2.util.util_a2d2 import find_length
 
 import warnings
 import pandas as pd
+
+memory = Memory(location='./cachedir', verbose=0)
+
+
+@memory.cache
+def cached_fit(data_tuple, pattern_length):
+    clf_off = NORMA(pattern_length=pattern_length, nm_size=3 * pattern_length,
+                    percentage_sel=1, normalize='z-norm')
+    clf_off.fit(np.array(data_tuple))
+    return np.array(clf_off.decision_scores_)
+
+
+def norm_a(data, flags, areas):
+    warnings.simplefilter("ignore", pd.errors.PerformanceWarning)
+
+    data_for_finding_pattern = np.array(data, dtype=float).flatten()
+    pattern_length = find_length(data_for_finding_pattern)
+
+    print('length:  ', end='')
+    print(pattern_length)
+
+    data_flattened = np.array(data, dtype=float).flatten()
+    data_tuple = tuple(map(float, data_flattened.tolist()))
+
+    scores = cached_fit(data_tuple, pattern_length)
+    scores = MinMaxScaler(feature_range=(0, 1)).fit_transform(scores.reshape(-1, 1)).ravel()
+    scores = np.array(
+        [scores[0]] * ((pattern_length - 1) // 2) + list(scores) + [scores[-1]] * ((pattern_length - 1) // 2))
+
+    flags = np.array(flags)
+
+    results = []
+    for area in areas:
+        start = area['start']
+        end = area['end']
+
+        area_scores = scores[start:end + 1]
+        area_flags = flags[start:end + 1]
+
+        if np.any(area_flags == 1):
+            threshold = np.min(area_scores[area_flags == 1])
+        else:
+            threshold = np.percentile(area_scores, 95)
+
+        anomaly_mask = area_scores >= threshold
+        num_anomalies = np.sum(anomaly_mask)
+
+        for i, is_anomaly in enumerate(anomaly_mask):
+            if is_anomaly and flags[start + i] != 1:
+                flags[start + i] = 3
+
+        avg_score = np.mean(area_scores)
+        std_score = np.std(area_scores)
+        anomaly_ratio = num_anomalies / len(area_scores) if len(area_scores) > 0 else 0
+
+        results.append({
+            'start': start,
+            'end': end,
+            'threshold': float(threshold),
+            'avg_score': float(avg_score),
+            'std_score': float(std_score),
+            'num_anomalies': int(num_anomalies),
+            'anomaly_ratio': float(anomaly_ratio),
+        })
+
+    return {'results': results, 'flags': flags.tolist()}
 
 
 def lof_with_hyperparameters(data, flags, areas, n_neighbors, contamination, metric, algorithm, leaf_size, p_value):
@@ -55,7 +122,7 @@ def i_forest_with_hyperparameters(data, flags, areas, n_estimators, contaminatio
 
     all_data_points = np.array(all_data_points).reshape(-1, 1)
 
-    i_forest = IsolationForest(n_estimators=n_estimators, contamination=contamination,max_samples=max_samples)
+    i_forest = IsolationForest(n_estimators=n_estimators, contamination=contamination, max_samples=max_samples)
     predictions = i_forest.fit_predict(all_data_points)
 
     for idx, point_idx in enumerate(all_indices):
@@ -94,10 +161,8 @@ def lof_without_hyperparameters(data, flags, areas):
         for idx, point_idx in enumerate(all_indices):
             detected_flags[point_idx] = (predictions[idx] == -1).astype(int)
 
-
         if np.all((flags == 1) <= (detected_flags == 1)):
             return detected_flags.tolist()
-
 
     return best_detected_flags.tolist()
 
@@ -119,7 +184,7 @@ def i_forest_without_hyperparameters(data, flags, areas):
 
     all_data_points = np.array(all_data_points).reshape(-1, 1)
 
-    contamination = max(0.01, min(0.1, np.sum(flags == 1) / len(flags)))*1.2
+    contamination = max(0.01, min(0.1, np.sum(flags == 1) / len(flags))) * 1.2
 
     iforest = IsolationForest(n_estimators=150, contamination=contamination, max_samples='auto', random_state=42)
     predictions = iforest.fit_predict(all_data_points)
@@ -131,65 +196,3 @@ def i_forest_without_hyperparameters(data, flags, areas):
                 detected_flags[point_idx] = 3
 
     return detected_flags.tolist()
-
-
-def norm_a(data, flags, areas):
-    warnings.simplefilter("ignore", pd.errors.PerformanceWarning)
-
-    data_for_finding_pattern = np.array(data, dtype=float).flatten()
-    pattern_length = find_length(data_for_finding_pattern)
-
-    data = np.array(data, dtype=float).flatten()
-
-    clf_off = NORMA(pattern_length=pattern_length, nm_size=3 * pattern_length,
-                    percentage_sel=1, normalize='z-norm')
-    clf_off.fit(data)
-    scores = np.array(clf_off.decision_scores_)
-
-    flags = np.array(flags)
-
-    results = []
-    for area in areas:
-        start = area['start']
-        end = area['end']
-
-        area_scores = scores[start:end + 1]
-        area_flags = flags[start:end + 1]
-
-        if np.any(area_flags == 1):
-            threshold = np.min(area_scores[area_flags == 1])
-        else:
-            threshold = np.percentile(area_scores, 95)
-
-        anomaly_mask = area_scores >= threshold
-        num_anomalies = np.sum(anomaly_mask)
-
-        for i, is_anomaly in enumerate(anomaly_mask):
-            if is_anomaly and flags[start + i] != 1:
-                flags[start + i] = 3
-
-        avg_score = np.mean(area_scores)
-        std_score = np.std(area_scores)
-        anomaly_ratio = num_anomalies / len(area_scores) if len(area_scores) > 0 else 0
-
-        results.append({
-            'start': start,
-            'end': end,
-            'threshold': float(threshold),
-            'avg_score': float(avg_score),
-            'std_score': float(std_score),
-            'num_anomalies': int(num_anomalies),
-            'anomaly_ratio': float(anomaly_ratio),
-        })
-
-        return {'results': results, 'flags': flags.tolist()}
-
-
-
-
-
-
-
-
-
-

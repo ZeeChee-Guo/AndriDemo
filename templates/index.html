@@ -269,7 +269,9 @@
                 <p class="text-muted text-center mb-1">
                     Automatic marking anomalies
                 </p>
-                <button id="autoDetectBtn" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#autoDetectAnomaliesModal">Auto Detect</button>
+                <button id="autoDetectBtn" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal"
+                        data-bs-target="#autoDetectAnomaliesModal">Auto Detect
+                </button>
             </div>
 
 
@@ -288,20 +290,20 @@
 </div>
 
 
-
 <!-- Chart1 Navigation Modal -->
 <div class="modal fade" id="chart1Modal" tabindex="-1" aria-labelledby="chart1ModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="chart1ModalLabel">Index:
-                <span id="chart1IndexValue"></span></h5>
+                    <span id="chart1IndexValue"></span></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
 
             <div class="modal-body">
                 <div class="d-flex justify-content-between mt-3">
-                    <button id="navigationAddTrainingSetBtn" data-bs-dismiss="modal" class="btn btn-primary d-none">Add a New Training Set
+                    <button id="navigationAddTrainingSetBtn" data-bs-dismiss="modal" class="btn btn-primary d-none">Add
+                        a New Training Set
                         Here
                     </button>
                     <button id="navigateToBtn" data-bs-dismiss="modal" class="btn btn-success">Navigate Here</button>
@@ -313,12 +315,13 @@
 
 
 <!-- Auto detect modal -->
-<div class="modal fade" id="autoDetectAnomaliesModal" tabindex="-1" aria-labelledby="autoDetectAnomaliesModalLabel" aria-hidden="true">
+<div class="modal fade" id="autoDetectAnomaliesModal" tabindex="-1" aria-labelledby="autoDetectAnomaliesModalLabel"
+     aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="autoDetectAnomaliesModalLabel">Auto Detect Anomalies</h5>
-                <button type="button"  class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
 
             <div class="modal-body">
@@ -337,7 +340,7 @@
                     <label for="anomalyMethod" class="form-label">Detection Method:</label>
                     <select class="form-select" id="anomalyMethod">
                         <option value="iforest" data-url="{{ url_for('detect_anomalies.i_forest') }}" selected>
-                            Isolation Forest (IForest)
+                            NormA
                         </option>
                         <option value="lof" data-url="{{ url_for('detect_anomalies.lof') }}">Local Outlier Factor
                             (LOF)
@@ -420,9 +423,6 @@
 </div>
 
 
-
-
-
 <script>
     // flags: 0: unknown, 1: anomaly, 2: normal, 3: anomaly marked by system
     point_dic = {
@@ -474,7 +474,7 @@
                     animation: false,
                     progressive: 5000,
                     progressiveThreshold: 25000,
-                    sampling: 'average', // comment
+                    sampling: 'average',
                     symbol: function (params) {
                         return flags[params[0]] === 1 ? "circle" : "emptyCircle";
                     },
@@ -557,7 +557,7 @@
                     smooth: true,
                     showAllSymbol: true,
                     animation: false,
-                    sampling: 'average',
+                    sampling: 'lttb',
                     progressive: 5000,
                     progressiveThreshold: 25000,
                     symbol: function (params) {
@@ -665,7 +665,7 @@
 
     // chart1 navigation: show modal
     function showModal(index) {
-         document.getElementById('chart1IndexValue').textContent = index;
+        document.getElementById('chart1IndexValue').textContent = index;
         chart1ModalInstance.show();
     }
 
@@ -852,7 +852,6 @@
                 series: [
                     {
                         data: seriesData2,
-                        sampling: 'average',
                     },
                 ],
 
@@ -946,7 +945,6 @@
                 series: [
                     {
                         data: seriesData2,
-                        sampling: 'average',
                     },
                 ],
 
@@ -1091,32 +1089,31 @@
     }
 
 
-    // mark anomalies
+    // Mark anomalies and update charts efficiently
     function markAnomalies() {
-        const seriesData = [];
-        for (let i = 0; i < fullData.length; i++) {
-            seriesData.push([i, fullData[i]]);
-        }
+        const seriesData = fullData.map((value, index) => [index, value]);
 
-        chart2.setOption({
-            series: [
-                {
-                    data: seriesData,
-                    sampling: 'average',
-                    symbol: function (params) {
-                        return point_dic[flags[params[0]]]['symbol']
-                    },
-                    symbolSize: function (params) {
-                        return point_dic[flags[params[0]]]['size']
-                    },
-                    itemStyle: {
-                        color: function (params) {
-                            return point_dic[flags[params.dataIndex]]['color']
+        const symbolArray = flags.map(flag => point_dic[flag]['symbol']);
+        const symbolSizeArray = flags.map(flag => point_dic[flag]['size']);
+        const colorArray = flags.map(flag => point_dic[flag]['color']);
+
+        function updateChart(chart) {
+            chart.setOption({
+                series: [
+                    {
+                        data: seriesData,
+                        symbol: (params) => symbolArray[params[0]],
+                        symbolSize: (params) => symbolSizeArray[params[0]],
+                        itemStyle: {
+                            color: (params) => colorArray[params.dataIndex],
                         },
                     },
-                },
-            ],
-        });
+                ],
+            });
+        }
+
+        updateChart(chart1);
+        updateChart(chart2);
 
         updateAnomaliesNum();
     }
@@ -1153,17 +1150,15 @@
         lowerBoundValue = lowerBoundValue === "" ? -Infinity : parseFloat(lowerBoundValue);
 
 
-        let totalInBrush = 0;
         for (let i = 0; i < fullData.length; i++) {
             if (isInBrushAreas(i)) {
-                totalInBrush++;
                 if (fullData[i] <= lowerBoundValue || fullData[i] >= upperBoundValue) {
                     flags[i] = 1;
+                }else {
+                    flags[i] = 0;
                 }
             }
         }
-
-        updateAnomaliesNum();
 
         markAnomalies();
     }
@@ -1203,10 +1198,9 @@
         })
             .then(response => response.json())
             .then(data => {
-                alert(data.results);
+                alert(JSON.stringify(data.results, null, 2));
                 flags = data.flags;
                 markAnomalies();
-                updateAnomaliesNum();
                 bootstrap.Modal.getInstance(document.getElementById('autoDetectAnomaliesModal')).hide();
             })
             .catch(error => {
@@ -1259,7 +1253,6 @@
             .then(data => {
                 flags = data;
                 markAnomalies();
-                updateAnomaliesNum();
                 bootstrap.Modal.getInstance(document.getElementById('autoDetectAnomaliesModal')).hide();
             })
             .catch(error => {
@@ -1319,7 +1312,7 @@
             }
         }
 
-        // 在添加新监听器前移除旧监听器
+
         if (sequentialHandlers.mousedown) {
             chart2.getZr().off('mousedown', sequentialHandlers.mousedown);
         }
@@ -1400,7 +1393,6 @@
 
                 stack.push({start: startCoord, end: endCoord});
                 markAnomalies();
-                updateAnomaliesNum();
             });
         } else {
             chart2.getZr().off('mousedown', sequentialHandlers.mousedown);
@@ -1428,7 +1420,6 @@
                 }
             }
             markAnomalies();
-            updateAnomaliesNum();
         } else {
             alert("No more sequential anomalies left");
         }
@@ -1451,7 +1442,6 @@
                 }
             }
             markAnomalies();
-            updateAnomaliesNum();
         } else {
             alert("No more normal points left");
         }
@@ -1597,7 +1587,6 @@
         });
 
     }
-
 
 
 </script>
