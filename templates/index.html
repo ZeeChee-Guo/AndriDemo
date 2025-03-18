@@ -107,9 +107,10 @@
     <div class="panel-container">
         <div class="panel-section">
             <!-- Upload Dataset Section -->
-            <div class="p-3 bg-light border rounded small text-center d-flex flex-column justify-content-center" id="uploadDatasetSection">
+            <div class="p-3 bg-light border rounded small text-center d-flex flex-column justify-content-center"
+                 id="uploadDatasetSection">
                 <h4 class="text-dark fw-bold mb-1">Upload Dataset File: </h4>
-                <p class="text-muted mb-2">
+                <p class="text-muted mb-2 fs-6">
                     Upload your dataset file in CSV or ARFF format. The system will analyze it and display basic
                     statistics.
                 </p>
@@ -140,8 +141,8 @@
             <!-- Select Training Set Instruction Box -->
             <div class="p-3 bg-light border rounded small text-center mt-2 d-flex flex-column justify-content-center d-none"
                  id="finshSelectTrainingSet">
-                <h4 class="text-dark fw-bold mb-1">Select Training Set(s):</h4>
-                <p class="text-muted mb-2">
+                <h4 class="text-dark fw-bold mb-1 fs-3">Select Training Set(s):</h4>
+                <p class="text-muted mb-2 fs-6">
                     The top chart is an overview of all the data. The bottom chart zooms in on the currently selected
                     training set.
                 </p>
@@ -163,8 +164,8 @@
             <!-- Mark Anomalies Instruction, Title -->
             <div class="p-3 bg-light border rounded small text-center mt-2 d-flex flex-column justify-content-center d-none"
                  id="markAnomaliesTitle">
-                <h6 class="text-dark fw-bold mb-1">Mark Anomalies:</h6>
-                <p class="text-muted mb-2">
+                <h3 class="text-dark fw-bold mb-1 fs-3">Mark Anomalies:</h3>
+                <p class="text-muted mb-2 fs-6">
                     Use the options below to mark anomalies manually, apply threshold-based marking, mark sequential
                     anomalies,
                     or detect anomalies automatically.
@@ -295,30 +296,6 @@
         <li data-anomaly="unknown">Mark as Unknown</li>
         <li data-anomaly="normal">Mark as Normal</li>
     </ul>
-</div>
-
-
-<!-- Chart1 Navigation Modal -->
-<div class="modal fade" id="chart1Modal" tabindex="-1" aria-labelledby="chart1ModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="chart1ModalLabel">Index:
-                    <span id="chart1IndexValue"></span></h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-
-            <div class="modal-body">
-                <div class="d-flex justify-content-between mt-3">
-                    <button id="navigationAddTrainingSetBtn" data-bs-dismiss="modal" class="btn btn-primary d-none">Add
-                        a New Training Set
-                        Here
-                    </button>
-                    <button id="navigateToBtn" data-bs-dismiss="modal" class="btn btn-success">Navigate Here</button>
-                </div>
-            </div>
-        </div>
-    </div>
 </div>
 
 
@@ -454,7 +431,6 @@
     let markingAnomaliesStack = [];
     let markingNormalStack = [];
     let currentPhase = ''; // 'SelectTrainSetsPhase', 'MarkAnomaliesPhase'
-    let chart1ModalInstance = null;
 
 
     function initCharts() {
@@ -612,7 +588,7 @@
             if (point && !isNaN(point[0])) {
                 const dataIndex = Math.round(point[0]); // Calculate the nearest x-axis index
                 if (dataIndex >= 0 && dataIndex < fullData.length) {
-                    showModal(dataIndex); // Display the modal and pass the nearest data point index
+                    navigateTo(dataIndex);
                 }
             }
         });
@@ -671,25 +647,6 @@
 
     }
 
-    // chart1 navigation: show modal
-    function showModal(index) {
-        document.getElementById('chart1IndexValue').textContent = index;
-        chart1ModalInstance.show();
-    }
-
-    // chart1 navigation: add a new training set at an index
-    function addTrainingSetAt(index) {
-        const lastArea = brushAreas[brushAreas.length - 1];
-        const size = lastArea.end - lastArea.start;
-        const newStart = Math.max(0, index - Math.floor(size / 2));
-        const newEnd = Math.min(fullData.length - 1, newStart + size);
-        brushAreas.push({start: newStart, end: newEnd});
-        updateBrushAreas();
-        updateChart2();
-        updateTrainingSetStatisticsTitle(brushAreas.length.toString());
-    }
-
-
     // chart1 navigation: navigate to an index
     function navigateTo(index) {
         let zoomRange = brushAreas[brushAreas.length - 1]['end'] - brushAreas[brushAreas.length - 1]['start'];
@@ -706,23 +663,6 @@
 
     window.onload = () => {
         initCharts();
-
-        // chart1 navigation
-        document.getElementById('navigationAddTrainingSetBtn').addEventListener('click', function () {
-            const index = parseInt(document.getElementById('chart1IndexValue').textContent);
-            addTrainingSetAt(index);
-
-
-        });
-
-        // chart1 navigation
-        document.getElementById('navigateToBtn').addEventListener('click', function () {
-            const index = parseInt(document.getElementById('chart1IndexValue').textContent);
-            navigateTo(index);
-        });
-
-        // init modals
-        chart1ModalInstance = new bootstrap.Modal(document.getElementById('chart1Modal'));
     };
 
 
@@ -890,24 +830,48 @@
     // add training set button
     document.getElementById("addTrainingSet").addEventListener("click", () => {
         if (!fullData || fullData.length === 0) return;
-        const lastArea = brushAreas[brushAreas.length - 1];
-        const newStart = lastArea.end + 1;
-        const remaining = fullData.length - newStart;
-        if (remaining <= 0) {
-            alert("No remaining data to add a new training set.");
-            return;
-        }
 
-        const previousLength = lastArea.end - lastArea.start;
-        let newLength = previousLength;
-        if (remaining < previousLength) {
-            newLength = Math.max(Math.floor(remaining * 0.2), 1);
+        const dataZoom = chart2.getOption().dataZoom[0];
+        const zoomStart = Math.floor((dataZoom.start / 100) * fullData.length);
+        const zoomEnd = Math.ceil((dataZoom.end / 100) * fullData.length) - 1;
+
+        const zoomBrushAreas = brushAreas.filter(area =>
+            area.start >= zoomStart && area.end <= zoomEnd
+        );
+
+        let newArea;
+
+        if (zoomBrushAreas.length === 0) {
+            const zoomRange = zoomEnd - zoomStart + 1;
+            const newStart = zoomStart + Math.floor(zoomRange * 0.05);
+            const newEnd = zoomEnd - Math.floor(zoomRange * 0.05);
+
+            newArea = {
+                start: newStart,
+                end: newEnd,
+            };
+        } else {
+            const lastArea = brushAreas[brushAreas.length - 1];
+            const newStart = lastArea.end + 1;
+            const remaining = fullData.length - newStart;
+
+            if (remaining <= 0) {
+                alert("No remaining data to add a new training set.");
+                return;
+            }
+
+            const previousLength = lastArea.end - lastArea.start;
+            let newLength = previousLength;
+            if (remaining < previousLength) {
+                newLength = Math.max(Math.floor(remaining * 0.2), 1);
+            }
+            const newEnd = Math.min(newStart + newLength, fullData.length - 1);
+
+            newArea = {
+                start: newStart,
+                end: newEnd,
+            };
         }
-        const newEnd = Math.min(newStart + newLength, fullData.length - 1);
-        const newArea = {
-            start: newStart,
-            end: newEnd,
-        };
 
         brushAreas.push(newArea);
         updateBrushAreas();
@@ -1472,7 +1436,6 @@
         document.getElementById('trainingSetRecordsText').classList.add('d-none');
         document.getElementById('anomalyCountText').classList.add('d-none');
         document.getElementById('markAnomaliesTitle').classList.add('d-none');
-        document.getElementById('navigationAddTrainingSetBtn').classList.remove('d-none');
         currentPhase = 'SelectTrainSetsPhase';
 
 
@@ -1523,7 +1486,6 @@
         document.getElementById('markAnomaliesTitle').classList.remove('d-none');
         document.getElementById('finshSelectTrainingSet').classList.add("d-none");
         document.getElementById('trainDatasetStats').classList.add('d-none');
-        document.getElementById('navigationAddTrainingSetBtn').classList.add('d-none');
         document.getElementById('trainingSetRecords').innerText =
             brushAreas.reduce((sum, area) => sum + (area.end - area.start), 0);
         document.getElementById('trainingSetRecordsText').classList.remove('d-none');
