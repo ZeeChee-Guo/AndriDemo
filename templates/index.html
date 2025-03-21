@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dual ECharts with Split Panel</title>
+    <title>Demo</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css">
     <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
     <style>
@@ -317,87 +317,6 @@
                     <div class="text-center">
                         <button id="optimizeHyperparametersBtn" class="btn btn-success">Auto-Tune Hyperparameters
                         </button>
-                    </div>
-                </div>
-
-                <!-- Detection Method Selection -->
-                <div class="p-3 border rounded mb-3">
-                    <label for="anomalyMethod" class="form-label">Detection Method:</label>
-                    <select class="form-select" id="anomalyMethod">
-                        <option value="iforest" data-url="{{ url_for('detect_anomalies.i_forest') }}" selected>
-                            NormA
-                        </option>
-                        <option value="lof" data-url="{{ url_for('detect_anomalies.lof') }}">Local Outlier Factor
-                            (LOF)
-                        </option>
-                    </select>
-                </div>
-
-                <div class="text-center mb-3">
-                    <button id="manualParamBtn" class="btn btn-primary">Manual Parameter Setting</button>
-                </div>
-
-                <div id="manualParamContainer" style="display: none;">
-                    <!-- IForest Parameters Section -->
-                    <div id="iforestParameters" class="p-3 border rounded">
-                        <div class="row">
-                            <div class="col">
-                                <label for="nEstimators" class="form-label">Trees (n_estimators):</label>
-                                <input type="number" class="form-control" id="nEstimators" value="100" min="1">
-                            </div>
-                            <div class="col">
-                                <label for="maxSamples" class="form-label">Max Samples:</label>
-                                <input type="number" class="form-control" id="maxSamples" value="256" min="1">
-                            </div>
-                        </div>
-                        <div class="row mt-3">
-                            <div class="col">
-                                <label for="contaminationIf" class="form-label">Contamination:</label>
-                                <input type="number" class="form-control" id="contaminationIf" value="0.1" step="0.001"
-                                       min="0.001" max="0.5">
-                            </div>
-                        </div>
-                        <div class="text-center mt-3">
-                            <button id="detectAnomaliesBtn1" class="btn btn-primary">Detect</button>
-                        </div>
-                    </div>
-
-                    <!-- LOF Parameters Section -->
-                    <div id="lofParameters" class="p-3 border rounded" style="display: none;">
-                        <div class="row">
-                            <div class="col">
-                                <label for="nNeighbors" class="form-label">Neighbors (n_neighbors):</label>
-                                <input type="number" class="form-control" id="nNeighbors" value="20" min="1">
-                            </div>
-                            <div class="col">
-                                <label for="contamination" class="form-label">Contamination:</label>
-                                <input type="number" class="form-control" id="contamination" value="0.1" step="0.001"
-                                       min="0.001" max="0.5">
-                            </div>
-                        </div>
-                        <div class="row mt-3">
-                            <div class="col">
-                                <label for="metric" class="form-label">Distance Metric:</label>
-                                <select class="form-select" id="metric">
-                                    <option value="euclidean" selected>Euclidean</option>
-                                    <option value="manhattan">Manhattan</option>
-                                    <option value="minkowski">Minkowski</option>
-                                    <option value="chebyshev">Chebyshev</option>
-                                    <option value="canberra">Canberra</option>
-                                </select>
-                            </div>
-                            <div class="col">
-                                <label for="algorithm" class="form-label">Algorithm:</label>
-                                <select class="form-select" id="algorithm">
-                                    <option value="auto" selected>Auto</option>
-                                    <option value="ball_tree">Ball Tree</option>
-                                    <option value="kd_tree">KD Tree</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="text-center mt-3">
-                            <button id="detectAnomaliesBtn2" class="btn btn-primary">Detect</button>
-                        </div>
                     </div>
                 </div>
 
@@ -1137,23 +1056,10 @@
     }
 
 
-    // auto detect modal
-    document.getElementById("anomalyMethod").addEventListener("change", function () {
-        const method = this.value;
-        document.getElementById("lofParameters").style.display = method === "lof" ? "block" : "none";
-        document.getElementById("iforestParameters").style.display = method === "iforest" ? "block" : "none";
-    });
-
-    document.getElementById("metric").addEventListener("change", function () {
-        const pContainer = document.getElementById("pValueContainer");
-        pContainer.style.display = this.value === "minkowski" ? "block" : "none";
-    });
-
 
     // auto-detect based on auto setting parameters
     document.getElementById('optimizeHyperparametersBtn').addEventListener('click', function () {
-        const selectElement = document.getElementById("anomalyMethod");
-        const url = selectElement.options[selectElement.selectedIndex].dataset.url;
+        const url = "{{ url_for('detect_anomalies.i_forest') }}";
 
         const body = {
             hyperparameters: 0,
@@ -1171,7 +1077,7 @@
         })
             .then(response => response.json())
             .then(data => {
-                alert(JSON.stringify(data.results, null, 2));
+                alert(JSON.stringify(data.mislabel_info, null, 2));
                 flags = data.flags;
                 markAnomalies();
                 bootstrap.Modal.getInstance(document.getElementById('autoDetectAnomaliesModal')).hide();
@@ -1179,72 +1085,6 @@
             .catch(error => {
                 console.error("error");
             });
-    });
-
-
-    function handleDetectAnomalies() {
-        const method = document.getElementById("anomalyMethod").value;
-        const selectElement = document.getElementById("anomalyMethod");
-        const url = selectElement.options[selectElement.selectedIndex].dataset.url;
-        let body;
-
-        if (method === "lof") {
-            // LOF
-            body = {
-                hyperparameters: 1,
-                data: fullData,
-                flags: flags,
-                areas: brushAreas,
-                nNeighbors: document.getElementById("nNeighbors").value,
-                contamination: document.getElementById('contamination').value,
-                metric: document.getElementById("metric").value,
-                algorithm: document.getElementById("algorithm").value,
-                leafSize: document.getElementById('leafSize') ? document.getElementById('leafSize').value : undefined,
-                pValue: document.getElementById('pValue') ? document.getElementById('pValue').value : undefined,
-            };
-        } else {
-            // iForest
-            body = {
-                hyperparameters: 1,
-                data: fullData,
-                flags: flags,
-                areas: brushAreas,
-                contamination: document.getElementById('contaminationIf').value,
-                n_estimator: document.getElementById('nEstimators').value,
-                maxSamples: document.getElementById('maxSamples').value
-            };
-        }
-
-        fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(body)
-        })
-            .then(response => response.json())
-            .then(data => {
-                flags = data;
-                markAnomalies();
-                bootstrap.Modal.getInstance(document.getElementById('autoDetectAnomaliesModal')).hide();
-            })
-            .catch(error => {
-                console.error("error");
-            });
-    }
-
-    // detect based on parameters set by the user
-    document.getElementById('detectAnomaliesBtn1').addEventListener('click', handleDetectAnomalies);
-    document.getElementById('detectAnomaliesBtn2').addEventListener('click', handleDetectAnomalies);
-
-
-    // Manual Param Setting Btn
-    document.getElementById("manualParamBtn").addEventListener("click", function () {
-        document.getElementById("manualParamContainer").style.display = "block";
-        this.style.display = "none";
-        const method = document.getElementById("anomalyMethod").value;
-        document.getElementById("lofParameters").style.display = method === "lof" ? "block" : "none";
-        document.getElementById("iforestParameters").style.display = method === "iforest" ? "block" : "none";
     });
 
 
