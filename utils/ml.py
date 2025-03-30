@@ -48,17 +48,17 @@ def group_consecutive_indices(indices):
 
 
 
-def norm_a(data, flags, areas, z_threshold=-2.5, delta_threshold=0.025, clustering_diff_threshold=0.05):
+def norm_a(data, flags, areas, z_threshold=-2.5, delta_threshold=0.07, clustering_diff_threshold=0.1):
     warnings.simplefilter("ignore", pd.errors.PerformanceWarning)
     flags = np.array(flags)
-    flags[flags != 0] = 1
+    flags[np.isin(flags, [1, 3, 4])] = 1
     suspects = []
 
-    # Global scoring
+
     data_arr = np.array(data, dtype=float).flatten()
     pattern_length, global_scores = compute_global_scores(data_arr)
 
-    # Global score statistics
+
     mean_score = np.mean(global_scores)
     std_score = np.std(global_scores)
     thresholds = [mean_score + i * std_score for i in range(4)]
@@ -81,16 +81,17 @@ def norm_a(data, flags, areas, z_threshold=-2.5, delta_threshold=0.025, clusteri
     for area in areas:
         start = int(area['start'])
         end = int(area['end'])
-        area_flags = np.array(flags[start:end + 1])
-        area_scores = global_scores[start:end + 1]
 
-        # Initial threshold
+        area_flags = flags[start:end+1].copy()
+        area_scores = global_scores[start:end+1]
+
+
         if np.any(area_flags == 1):
             original_threshold = np.min(area_scores[area_flags == 1])
         else:
             original_threshold = np.percentile(area_scores, 95)
 
-        # Robust z-score + leave-one-out
+
         flagged_indices = np.where(area_flags == 1)[0]
         sensitivity_mislabels = []
         if len(flagged_indices) > 0:
@@ -111,7 +112,7 @@ def norm_a(data, flags, areas, z_threshold=-2.5, delta_threshold=0.025, clusteri
                 if z < z_threshold or delta > delta_threshold:
                     sensitivity_mislabels.append(int(idx))
 
-        # KMeans clustering
+
         clustering_mislabels = []
         if len(flagged_indices) > 1:
             flagged_scores = area_scores[flagged_indices]
@@ -123,11 +124,9 @@ def norm_a(data, flags, areas, z_threshold=-2.5, delta_threshold=0.025, clusteri
             if np.abs(centers[0] - centers[1]) > clustering_diff_threshold:
                 clustering_mislabels = [int(idx) for idx in flagged_indices[labels == lower_cluster]]
 
-        # Merge mislabels
-        combined_mislabels = list(set(sensitivity_mislabels).union(set(clustering_mislabels)))
-        combined_mislabels.sort()
 
-        # Group and add suspects
+        combined_mislabels = sorted(set(sensitivity_mislabels).union(set(clustering_mislabels)))
+
         mislabel_groups = group_consecutive_indices(combined_mislabels)
         for group in mislabel_groups:
             area_indices = [start + idx for idx in group]
@@ -138,24 +137,20 @@ def norm_a(data, flags, areas, z_threshold=-2.5, delta_threshold=0.025, clusteri
                 'max_score': max(scores)
             })
 
-        # Mark mislabels in flags
-        for idx in combined_mislabels:
-            area_flags[idx] = 0
-            flags[start + idx] = 3  # mark as possible mislabel
-
-
-        if np.any(flags[start:end + 1] == 1):
-            threshold = np.min([(area_flags == 1) | (area_flags == 3)])
+        union_mask = (area_flags == 1) | (np.isin(np.arange(len(area_flags)), combined_mislabels))
+        if np.any(union_mask):
+            threshold = np.min(area_scores[union_mask])
         else:
             threshold = np.percentile(area_scores, 95)
 
-        # Mark system-detected anomalies, but preserve mislabel flags (3)
-        for i in range(end - start + 1):
-            if area_scores[i] > threshold and flags[start + i] not in [1, 3]:
+        for idx in combined_mislabels:
+            flags[start + idx] = 3
+
+        for i in range(len(area_scores)):
+            if area_scores[i] >= threshold and flags[start + i] not in [1, 3]:
                 flags[start + i] = 4
 
 
-    # Sort suspects by max_score (ascending = most likely to be wrong at end)
     suspects.sort(key=lambda x: x['max_score'])
 
     return {
@@ -168,3 +163,4 @@ def norm_a(data, flags, areas, z_threshold=-2.5, delta_threshold=0.025, clusteri
         },
         'global_scores': global_scores.tolist()
     }
+

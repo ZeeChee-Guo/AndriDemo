@@ -1225,10 +1225,19 @@
             });
 
             item.querySelector(".accept-mislabeled-btn").addEventListener("click", () => {
-                const maxScore = suspect.max_score;
+                const currentMaxScore = suspect.max_score;
+                const currentIndex = suspects.findIndex(s => s === suspect);
+
+                let threshold;
+                if (currentIndex + 1 < suspects.length) {
+                    threshold = suspects[currentIndex + 1].min_score;
+                } else {
+                    threshold = currentMaxScore;
+                }
+
 
                 globalScores.forEach((score, i) => {
-                    if (score <= maxScore) {
+                    if (score <= threshold) {
                         flags[i] = 0;
                     }
                 });
@@ -1236,9 +1245,8 @@
 
                 const remainingSuspects = [];
                 const items = container.querySelectorAll(".mislabeled-anomaly-item");
-
                 suspects.forEach((s, i) => {
-                    if (s.max_score >= maxScore) {
+                    if (s.max_score >= currentMaxScore) {
                         remainingSuspects.push(s);
                     } else {
                         items[i]?.remove();
@@ -1251,6 +1259,7 @@
                 markAnomalies();
                 updateAnomaliesNum();
             });
+
 
 
             container.appendChild(item);
@@ -1278,6 +1287,7 @@
         })
             .then(response => response.json())
             .then(data => {
+
                 flags = data.flags;
                 markAnomalies();
                 bootstrap.Modal.getInstance(document.getElementById('autoDetectAnomaliesModal')).hide();
