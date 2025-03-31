@@ -162,6 +162,15 @@
             </div>
 
 
+            <!-- Revert to Mark Anomalies Btn -->
+            <div class="d-flex gap-2 p-1 w-100 mt-1 d-none" id="revertToMarkAnomalies">
+                <button id="revertToMarkAnomaliesBtn" class="btn btn-outline-danger btn-sm w-50"
+                        style="box-shadow: 0 0 8px rgba(220, 53, 69, 0.5);">
+                    Revert to Mark Anomalies
+                </button>
+            </div>
+
+
             <!-- Mark Anomalies Instruction, Title -->
             <div class="p-3 bg-light border rounded small text-center mt-2 d-flex flex-column justify-content-center d-none"
                  id="markAnomaliesTitle">
@@ -318,9 +327,9 @@
                 </p>
 
                 <!-- Item 1: Mislabeled Anomaly -->
-                <div class="p-2 bg-light border rounded small mb-1 mislabeled-anomaly-item d-flex align-items-center justify-content-between fs-6">
+                <div class="p-2 bg-light border d-none rounded small mb-1 mislabeled-anomaly-item d-flex align-items-center justify-content-between fs-6">
                     <div class="me-1">
-                        <strong>Suspects 1</strong>
+                        <strong>Group 1</strong>
                     </div>
                     <div class="me-6 border-start ps-3">
                         <span><strong>Start:</strong> <span class="mislabeled-start">123</span></span>
@@ -428,6 +437,22 @@
                             </tbody>
                         </table>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Progress Bar -->
+<div class="modal fade" id="loadingModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static"
+     data-bs-keyboard="false">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content text-center p-5" style="font-size: 1.2rem;">
+            <h4 class="mb-4">Calculating...</h4>
+            <div class="progress" style="height: 30px;">
+                <div id="loadingProgressBar" class="progress-bar progress-bar-striped progress-bar-animated"
+                     role="progressbar" style="width: 0%">0%
                 </div>
             </div>
         </div>
@@ -989,12 +1014,22 @@
 
 
     document.getElementById('finshSelectTrainingSetBtn').addEventListener("click", () => {
+        const isTooShort = brushAreas.some(area => (area.end - area.start) < 3000);
+        if (isTooShort) {
+            alert('The training set length must be at least 3000');
+            return;
+        }
+
         enableMarkAnomaliesPhase();
     })
 
 
     document.getElementById("revertToSelectTrainingSetBtn").addEventListener("click", () => {
         enableSelectTrainSetsPhase();
+    })
+
+    document.getElementById("revertToMarkAnomalies").addEventListener("click", () => {
+        enableMarkAnomaliesPhase();
     })
 
 
@@ -1188,89 +1223,137 @@
         document.getElementById('row4-prop').textContent = (stats[0].anomaly_ratio * 100).toFixed(2) + '%';
     }
 
+    // render mislabeled anomalies zone util
+    function groupSuspects(suspects, globalScores) {
+        if (suspects.length === 0) return [];
+        const sorted = suspects.slice().sort((a, b) => a - b);
+        const groups = [];
+        let currentGroup = [sorted[0]];
+
+        for (let i = 1; i < sorted.length; i++) {
+            if (sorted[i] === sorted[i - 1] + 1) {
+                currentGroup.push(sorted[i]);
+            } else {
+                groups.push(currentGroup);
+                currentGroup = [sorted[i]];
+            }
+        }
+        if (currentGroup.length > 0) groups.push(currentGroup);
+
+        const groupObjects = groups.map(group => {
+            const scores = group.map(idx => globalScores[idx]);
+            return {
+                indices: group,
+                min_score: Math.min(...scores),
+                max_score: Math.max(...scores)
+            };
+        });
+
+        groupObjects.sort((a, b) => b.max_score - a.max_score);
+        return groupObjects;
+    }
+
     // render mislabeled anomalies zone
     function renderMislabeledAnomalies(suspects, globalScores) {
         const container = document.getElementById("potentialMislabeledAnomaliesList");
+        container.querySelectorAll(".mislabeled-anomaly-item").forEach(item => item.remove());
 
-        const existingItems = container.querySelectorAll(".mislabeled-anomaly-item");
-        existingItems.forEach(item => item.remove());
+        const groups = groupSuspects(suspects, globalScores);
 
-        suspects.forEach((suspect, index) => {
-            const start = Math.min(...suspect.index);
-            const end = Math.max(...suspect.index);
+        groups.forEach((group, groupIndex) => {
+            const start = Math.min(...group.indices);
+            const end = Math.max(...group.indices);
+
+            const minScoreFormatted = group.min_score.toFixed(4);
+            const maxScoreFormatted = group.max_score.toFixed(4);
 
             const item = document.createElement("div");
-            item.className = "p-2 bg-light border rounded small mb-1 mislabeled-anomaly-item d-flex align-items-center justify-content-between fs-6";
+            item.className = "p-2 bg-light border rounded small mb-1 mislabeled-anomaly-item";
 
-            item.innerHTML = `
+            item.innerHTML = `<div class="d-flex flex-row justify-content-between align-items-center w-100 gap-1">
             <div class="me-1">
-                <strong>Suspects ${index + 1}</strong>
+                <strong class="fs-5">Group ${groupIndex + 1}</strong>
             </div>
-            <div class="me-6 border-start ps-3">
-                <span><strong>Start:</strong> <span class="mislabeled-start">${start}</span></span>
-                <span class="ms-3"><strong>End:</strong> <span class="mislabeled-end">${end}</span></span>
+            <div class="border-start ps-2">
+                <div><strong class="fs-6">Start:</strong> <span class="mislabeled-start fs-6">${start}</span></div>
+                <div><strong class="fs-6">End:</strong> <span class="mislabeled-end fs-6">${end}</span></div>
             </div>
-            <div class="border-start ps-3">
-                <button class="btn btn-outline-primary btn-sm me-2 view-mislabeled-btn">View</button>
+            <div class="border-start ps-2">
+                <div><strong class="fs-6">Max:</strong> <span class="max-score fs-6">${maxScoreFormatted}</span></div>
+                <div><strong class="fs-6">Min:</strong> <span class="min-score fs-6">${minScoreFormatted}</span></div>
+            </div>
+            <div class="border-start ps-2 d-flex flex-column gap-1">
+                <button class="btn btn-outline-primary btn-sm view-mislabeled-btn">View</button>
                 <button class="btn btn-outline-success btn-sm accept-mislabeled-btn">Accept</button>
             </div>
-        `;
+        </div>
+            `;
+
 
             item.querySelector(".view-mislabeled-btn").addEventListener("click", () => {
                 chart2.dispatchAction({
                     type: "dataZoom",
-                    startValue: Math.max(start - 20, 0),
-                    endValue: Math.min(end + 20, fullData.length - 1),
+                    startValue: Math.max(start - 30, 0),
+                    endValue: Math.min(end + 30, fullData.length - 1),
                 });
             });
 
-            item.querySelector(".accept-mislabeled-btn").addEventListener("click", () => {
-                const currentMaxScore = suspect.max_score;
-                const currentIndex = suspects.findIndex(s => s === suspect);
 
+            item.querySelector(".accept-mislabeled-btn").addEventListener("click", () => {
                 let threshold;
-                if (currentIndex + 1 < suspects.length) {
-                    threshold = suspects[currentIndex + 1].min_score;
+
+                const candidates = suspects.filter(idx => globalScores[idx] > group.max_score);
+                if (candidates.length > 0) {
+                    threshold = Math.min(...candidates.map(idx => globalScores[idx]));
+                    globalScores.forEach((score, i) => {
+                        if (score < threshold) {
+                            flags[i] = 0;
+                        }
+                    });
+                    suspects = suspects.filter(idx => globalScores[idx] >= threshold);
                 } else {
-                    threshold = currentMaxScore;
+                    threshold = group.max_score;
+                    globalScores.forEach((score, i) => {
+                        if (score <= threshold) {
+                            flags[i] = 0;
+                        }
+                    });
+                    suspects = suspects.filter(idx => globalScores[idx] > threshold);
                 }
 
 
-                globalScores.forEach((score, i) => {
-                    if (score <= threshold) {
-                        flags[i] = 0;
-                    }
-                });
-
-
-                const remainingSuspects = [];
-                const items = container.querySelectorAll(".mislabeled-anomaly-item");
-                suspects.forEach((s, i) => {
-                    if (s.max_score >= currentMaxScore) {
-                        remainingSuspects.push(s);
-                    } else {
-                        items[i]?.remove();
-                    }
-                });
-
-                suspects = remainingSuspects;
-                item.remove();
-
+                renderMislabeledAnomalies(suspects, globalScores);
                 markAnomalies();
                 updateAnomaliesNum();
             });
-
-
 
             container.appendChild(item);
         });
     }
 
-
     // auto-detect based on auto setting parameters
     document.getElementById('optimizeHyperparametersBtn').addEventListener('click', function () {
-        const url = "{{ url_for('detect_anomalies.i_forest') }}";
+        const currentModal = bootstrap.Modal.getInstance(document.getElementById('autoDetectAnomaliesModal'));
+        currentModal.hide();
 
+        const loadingModalElement = document.getElementById('loadingModal');
+        const loadingModal = new bootstrap.Modal(loadingModalElement);
+        loadingModal.show();
+
+        const progressBar = document.getElementById('loadingProgressBar');
+        let progress = 0;
+        progressBar.style.width = '0%';
+        progressBar.innerText = '0%';
+
+        let interval = setInterval(() => {
+            if (progress < 90) {
+                progress += 15;
+                progressBar.style.width = `${progress}%`;
+                progressBar.innerText = `${progress}%`;
+            }
+        }, 7000);
+
+        const url = "{{ url_for('detect_anomalies.i_forest') }}";
         const body = {
             hyperparameters: 0,
             data: fullData,
@@ -1287,22 +1370,29 @@
         })
             .then(response => response.json())
             .then(data => {
+                clearInterval(interval);
+                progress = 100;
+                progressBar.style.width = '100%';
+                progressBar.innerText = '100%';
 
-                flags = data.flags;
-                markAnomalies();
-                bootstrap.Modal.getInstance(document.getElementById('autoDetectAnomaliesModal')).hide();
+                setTimeout(() => {
+                    loadingModal.hide();
 
+                    flags = data.flags;
+                    markAnomalies();
 
-                const modal = new bootstrap.Modal(document.getElementById('thresholdTableModal'));
-                modal.show();
+                    const modal = new bootstrap.Modal(document.getElementById('thresholdTableModal'));
+                    modal.show();
 
-                renderSummaryTable(data.global_score_stats.anomaly_threshold_stats);
-                renderMislabeledAnomalies(data.suspects, data.global_scores);
-
-                enableRevisePotentialMislabeledAnomaliesPhase();
+                    renderSummaryTable(data.global_score_stats.anomaly_threshold_stats);
+                    renderMislabeledAnomalies(data.suspects, data.global_scores);
+                    enableRevisePotentialMislabeledAnomaliesPhase();
+                }, 500);
             })
             .catch(error => {
-                console.error("error");
+                clearInterval(interval);
+                console.log(error);
+                loadingModal.hide();
             });
     });
 
@@ -1581,6 +1671,8 @@
         document.getElementById('markAnomaliesTitle').classList.remove('d-none');
         document.getElementById('finshSelectTrainingSet').classList.add("d-none");
         document.getElementById('trainDatasetStats').classList.add('d-none');
+        document.getElementById('potentialMislabeledAnomaliesList').classList.add('d-none');
+        document.getElementById('revisePotentialMislabeledAnomaliesTitle').classList.add('d-none');
         document.getElementById('trainingSetRecords').innerText =
             brushAreas.reduce((sum, area) => sum + (area.end - area.start), 0);
         document.getElementById('trainingSetRecordsText').classList.remove('d-none');
@@ -1661,6 +1753,7 @@
         document.getElementById('threeMethods').classList.add('d-none');
         document.getElementById('markAsNormalSection').classList.add('d-none');
         document.getElementById('revertToSelectTrainingSetBtn').classList.add('d-none');
+        document.getElementById('revertToMarkAnomalies').classList.remove('d-none');
         document.getElementById('potentialMislabeledAnomaliesList').classList.remove('d-none');
         document.getElementById('autoDetectSection').classList.remove('mt-4');
         cancelSequentialMode();
