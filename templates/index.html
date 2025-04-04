@@ -190,7 +190,7 @@
             <!-- Revise Potential Mislabeled Anomalies Title -->
             <div class="p-3 bg-light border rounded small text-center mt-2 d-flex flex-column justify-content-center d-none"
                  id="revisePotentialMislabeledAnomaliesTitle">
-                <h3 class="text-dark fw-bold mb-1 fs-3">Revise Possible Mislabeled Anomalies:</h3>
+                <h3 class="text-dark fw-bold mb-1 fs-3">Revise Possible Mislabeled Anomalies</h3>
                 <p class="text-muted mb-2 fs-6">
                     The following is a list of possible anomalies that are incorrectly labeled. In the NormA method,
                     each point is calculated to get a score, and points with a score higher than the
@@ -258,7 +258,8 @@
                 <!-- Section 2: Threshold-Based Marking -->
                 <div class="p-2 border rounded small mb-1" id="thresholdMarkingSection">
                     <p class="text-muted mb-2">
-                        <strong>Threshold-Based Marking: </strong>Points are anomalies if they fall outside the range
+                        <strong>Threshold-Based Marking: </strong>Anomalies are points that are above the upper bound
+                        or below the lower bound.
                     </p>
                     <div class="d-flex align-items-center mb-1">
                         <label for="anomalyUpperBound" class="form-label mb-0 me-2">Upper Bound:</label>
@@ -272,6 +273,7 @@
                         <button id="selectAnomaliesPanelBtn" class="btn btn-outline-primary btn-sm"
                                 onclick="thresholdSelect()">Apply
                         </button>
+                        <button id="undoThresholdMarkBtn" class="btn btn-outline-danger btn-sm">Undo</button>
                     </div>
                 </div>
 
@@ -322,26 +324,84 @@
                  id="potentialMislabeledAnomaliesList">
                 <h4 class="text-center mb-1">Potential Mislabeled Anomalies List</h4>
                 <p class="text-center text-muted mb-3">
-                    Orange points represent data that may have been mislabeled, while yellow points are additional
+                    Orange points represent points that may have been mislabeled, while yellow points are additional
                     anomalies identified by the system based on your current annotations.
                 </p>
 
-                <!-- Item 1: Mislabeled Anomaly -->
-                <div class="p-2 bg-light border d-none rounded small mb-1 mislabeled-anomaly-item d-flex align-items-center justify-content-between fs-6">
+
+                <!-- Items: Mislabeled Anomaly -->
+                <div class="p-2 bg-light border rounded small mb-1 mislabeled-anomaly-item d-flex
+                align-items-center justify-content-between fs-6" id="option1">
                     <div class="me-1">
-                        <strong>Group 1</strong>
+                        <strong>Option 1</strong>
                     </div>
                     <div class="me-6 border-start ps-3">
-                        <span><strong>Start:</strong> <span class="mislabeled-start">123</span></span>
-                        <span class="ms-3"><strong>End:</strong> <span class="mislabeled-end">456</span></span>
+                        <span><strong>Threshold:</strong> <span>123</span></span>
+                        <span class="ms-3"><strong>Quantile</strong> <span>98%</span></span>
                     </div>
                     <div class="border-start ps-3">
-                        <button class="btn btn-outline-primary btn-sm me-2 view-mislabeled-btn">View</button>
-                        <button class="btn btn-outline-success btn-sm accept-mislabeled-btn">Accept</button>
+                        <button class="btn btn-outline-primary btn-sm me-2" id="option1ViewBtn">View</button>
+                        <button class="btn btn-outline-success btn-sm accept-mislabeled-btn">Apply</button>
                     </div>
                 </div>
 
+                <div class="p-2 bg-light border rounded small mb-1 mislabeled-anomaly-item d-flex
+                align-items-center justify-content-between fs-6" id="option2">
+                    <div class="me-1">
+                        <strong>Option 2</strong>
+                    </div>
+                    <div class="me-6 border-start ps-3">
+                        <span><strong>Threshold:</strong> <span>123</span></span>
+                        <span class="ms-3"><strong>Quantile</strong> <span>92%</span></span>
+                    </div>
+                    <div class="border-start ps-3">
+                        <button class="btn btn-outline-primary btn-sm me-2 " id="option2ViewBtn">View</button>
+                        <button class="btn btn-outline-success btn-sm accept-mislabeled-btn">Apply</button>
+                    </div>
+                </div>
+
+
+                <div class="p-2 bg-light border rounded small mb-1 mislabeled-anomaly-item d-flex
+                align-items-center justify-content-between fs-6" id="option3">
+                    <div class="me-1">
+                        <strong>Option 3</strong>
+                    </div>
+                    <div class="me-6 border-start ps-3">
+                        <span><strong>Threshold:</strong> <span>123</span></span>
+                        <span class="ms-3"><strong>Quantile</strong> <span>85%</span></span>
+                    </div>
+                    <div class="border-start ps-3">
+                        <button class="btn btn-outline-primary btn-sm me-2" id="option3ViewBtn">View</button>
+                        <button class="btn btn-outline-success btn-sm accept-mislabeled-btn">Apply</button>
+                    </div>
+                </div>
+
+
             </div>
+
+
+            <!-- threshold Slider Bar -->
+            <div id="thresholdSlideBar" class="card p-2 mt-1 w-100">
+                <label for="scoreThresholdSlideBar" class="form-label">Threshold: <span
+                        id="thresholdSlideBarValue">0.85</span></label>
+                <input type="range" class="form-range" min="0" max="1" step="0.005" id="scoreThresholdSlideBar"
+                       value="0.5">
+
+                <div class="d-flex justify-content-between small px-1 mt-n2">
+                    <span>0</span>
+                    <span>0.1</span>
+                    <span>0.2</span>
+                    <span>0.3</span>
+                    <span>0.4</span>
+                    <span>0.5</span>
+                    <span>0.6</span>
+                    <span>0.7</span>
+                    <span>0.8</span>
+                    <span>0.9</span>
+                    <span>1</span>
+                </div>
+            </div>
+
 
         </div>
 
@@ -385,64 +445,6 @@
     </div>
 </div>
 
-<!-- Anomaly Threshold Table Modal -->
-<div class="modal fade" id="thresholdTableModal" tabindex="-1" aria-labelledby="thresholdTableModalLabel"
-     aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="thresholdTableModalLabel">Result Summary</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-
-            <div class="modal-body">
-                <div class="p-3 rounded" style="background-color: #f8f9fa;">
-                    <p class="mb-3 text-center">This table shows how different thresholds affect anomaly detection
-                        results.</p>
-                    <div class="table-responsive">
-                        <table class="table table-bordered text-center align-middle mb-0" id="thresholdTable">
-                            <thead class="table-light">
-                            <tr>
-                                <th>Threshold</th>
-                                <th>Threshold Value</th>
-                                <th>Number of Anomalies</th>
-                                <th>Proportion of Anomalies</th>
-                            </tr>
-                            </thead>
-                            <tbody>
-                            <tr>
-                                <td>Average + 3×STD</td>
-                                <td id="row1-value">-</td>
-                                <td id="row1-count">-</td>
-                                <td id="row1-prop">-</td>
-                            </tr>
-                            <tr>
-                                <td>Average + 2×STD</td>
-                                <td id="row2-value">-</td>
-                                <td id="row2-count">-</td>
-                                <td id="row2-prop">-</td>
-                            </tr>
-                            <tr>
-                                <td>Average + 1×STD</td>
-                                <td id="row3-value">-</td>
-                                <td id="row3-count">-</td>
-                                <td id="row3-prop">-</td>
-                            </tr>
-                            <tr>
-                                <td>Average</td>
-                                <td id="row4-value">-</td>
-                                <td id="row4-count">-</td>
-                                <td id="row4-prop">-</td>
-                            </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
 
 <!-- Progress Bar -->
 <div class="modal fade" id="loadingModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static"
@@ -461,18 +463,20 @@
 
 
 <script>
+
+
     // flags: 0: unknown, 1: anomaly, 2: normal, 3: possible mislabeled points, 4: anomaly marked by system
     point_dic = {
         0: {'size': 5, 'symbol': 'emptyCircle', 'color': 'rgba(100, 149, 237, 0.8)'},
         1: {'size': 9, 'symbol': 'circle', 'color': 'rgba(255, 30, 0, 0.9)'},
         2: {'size': 9, 'symbol': 'circle', 'color': 'rgba(60, 179, 113, 0.9)'},
-        3: {'size': 9, 'symbol': 'circle', 'color': 'rgba(255, 160, 0, 1)'},
-        4: {'size': 9, 'symbol': 'circle', 'color': 'rgba(255, 220, 0, 1)'},
+        3: {'size': 11, 'symbol': 'diamond', 'color': 'rgba(255, 160, 0, 1)'},
+        4: {'size': 11, 'symbol': 'triangle', 'color': 'rgba(255, 220, 0, 1)'},
     }
 
 
     let chart1, chart2;
-    let fullData, flags, brushAreas, baseline = [];
+    let fullData = [], flags = [], brushAreas = [], baseline = [], globalScores = [];
     let chart1Title = "Full Data Overview";
 
 
@@ -510,7 +514,7 @@
                     showAllSymbol: true,
                     animation: false,
                     progressive: 5000,
-                    progressiveThreshold: 25000,
+                    progressiveThreshold: 15000,
                     sampling: 'average',
                     symbol: function (params) {
                         return flags[params[0]] === 1 ? "circle" : "emptyCircle";
@@ -596,7 +600,7 @@
                     animation: false,
                     sampling: 'lttb',
                     progressive: 5000,
-                    progressiveThreshold: 25000,
+                    progressiveThreshold: 15000,
                     symbol: function (params) {
                         return flags[params[0]] === 1 ? "circle" : "emptyCircle";
                     },
@@ -1204,134 +1208,29 @@
     }
 
 
-    // render summary table
-    function renderSummaryTable(stats) {
-        document.getElementById('row1-value').textContent = stats[3].threshold_value.toFixed(3);
-        document.getElementById('row1-count').textContent = stats[3].anomaly_count;
-        document.getElementById('row1-prop').textContent = (stats[3].anomaly_ratio * 100).toFixed(2) + '%';
+    // undo
+    document.getElementById('undoThresholdMarkBtn').addEventListener('click', function () {
+        let upperBoundValue = Infinity;
+        let lowerBoundValue = -Infinity;
 
-        document.getElementById('row2-value').textContent = stats[2].threshold_value.toFixed(3);
-        document.getElementById('row2-count').textContent = stats[2].anomaly_count;
-        document.getElementById('row2-prop').textContent = (stats[2].anomaly_ratio * 100).toFixed(2) + '%';
+        document.getElementById("anomalyUpperBound").value = "";
+        document.getElementById("anomalyLowerBound").value = "";
 
-        document.getElementById('row3-value').textContent = stats[1].threshold_value.toFixed(3);
-        document.getElementById('row3-count').textContent = stats[1].anomaly_count;
-        document.getElementById('row3-prop').textContent = (stats[1].anomaly_ratio * 100).toFixed(2) + '%';
 
-        document.getElementById('row4-value').textContent = stats[0].threshold_value.toFixed(3);
-        document.getElementById('row4-count').textContent = stats[0].anomaly_count;
-        document.getElementById('row4-prop').textContent = (stats[0].anomaly_ratio * 100).toFixed(2) + '%';
-    }
-
-    // render mislabeled anomalies zone util
-    function groupSuspects(suspects, globalScores) {
-        if (suspects.length === 0) return [];
-        const sorted = suspects.slice().sort((a, b) => a - b);
-        const groups = [];
-        let currentGroup = [sorted[0]];
-
-        for (let i = 1; i < sorted.length; i++) {
-            if (sorted[i] === sorted[i - 1] + 1) {
-                currentGroup.push(sorted[i]);
-            } else {
-                groups.push(currentGroup);
-                currentGroup = [sorted[i]];
+        for (let i = 0; i < fullData.length; i++) {
+            if (isInBrushAreas(i)) {
+                if (fullData[i] <= lowerBoundValue || fullData[i] >= upperBoundValue) {
+                    flags[i] = 1;
+                } else {
+                    flags[i] = 0;
+                }
             }
         }
-        if (currentGroup.length > 0) groups.push(currentGroup);
 
-        const groupObjects = groups.map(group => {
-            const scores = group.map(idx => globalScores[idx]);
-            return {
-                indices: group,
-                min_score: Math.min(...scores),
-                max_score: Math.max(...scores)
-            };
-        });
+        markAnomalies();
+    })
 
-        groupObjects.sort((a, b) => b.max_score - a.max_score);
-        return groupObjects;
-    }
-
-    // render mislabeled anomalies zone
-    function renderMislabeledAnomalies(suspects, globalScores) {
-        const container = document.getElementById("potentialMislabeledAnomaliesList");
-        container.querySelectorAll(".mislabeled-anomaly-item").forEach(item => item.remove());
-
-        const groups = groupSuspects(suspects, globalScores);
-
-        groups.forEach((group, groupIndex) => {
-            const start = Math.min(...group.indices);
-            const end = Math.max(...group.indices);
-
-            const minScoreFormatted = group.min_score.toFixed(4);
-            const maxScoreFormatted = group.max_score.toFixed(4);
-
-            const item = document.createElement("div");
-            item.className = "p-2 bg-light border rounded small mb-1 mislabeled-anomaly-item";
-
-            item.innerHTML = `<div class="d-flex flex-row justify-content-between align-items-center w-100 gap-1">
-            <div class="me-1">
-                <strong class="fs-5">Group ${groupIndex + 1}</strong>
-            </div>
-            <div class="border-start ps-2">
-                <div><strong class="fs-6">Start:</strong> <span class="mislabeled-start fs-6">${start}</span></div>
-                <div><strong class="fs-6">End:</strong> <span class="mislabeled-end fs-6">${end}</span></div>
-            </div>
-            <div class="border-start ps-2">
-                <div><strong class="fs-6">Max:</strong> <span class="max-score fs-6">${maxScoreFormatted}</span></div>
-                <div><strong class="fs-6">Min:</strong> <span class="min-score fs-6">${minScoreFormatted}</span></div>
-            </div>
-            <div class="border-start ps-2 d-flex flex-column gap-1">
-                <button class="btn btn-outline-primary btn-sm view-mislabeled-btn">View</button>
-                <button class="btn btn-outline-success btn-sm accept-mislabeled-btn">Accept</button>
-            </div>
-        </div>
-            `;
-
-
-            item.querySelector(".view-mislabeled-btn").addEventListener("click", () => {
-                chart2.dispatchAction({
-                    type: "dataZoom",
-                    startValue: Math.max(start - 30, 0),
-                    endValue: Math.min(end + 30, fullData.length - 1),
-                });
-            });
-
-
-            item.querySelector(".accept-mislabeled-btn").addEventListener("click", () => {
-                let threshold;
-
-                const candidates = suspects.filter(idx => globalScores[idx] > group.max_score);
-                if (candidates.length > 0) {
-                    threshold = Math.min(...candidates.map(idx => globalScores[idx]));
-                    globalScores.forEach((score, i) => {
-                        if (score < threshold) {
-                            flags[i] = 0;
-                        }
-                    });
-                    suspects = suspects.filter(idx => globalScores[idx] >= threshold);
-                } else {
-                    threshold = group.max_score;
-                    globalScores.forEach((score, i) => {
-                        if (score <= threshold) {
-                            flags[i] = 0;
-                        }
-                    });
-                    suspects = suspects.filter(idx => globalScores[idx] > threshold);
-                }
-
-
-                renderMislabeledAnomalies(suspects, globalScores);
-                markAnomalies();
-                updateAnomaliesNum();
-            });
-
-            container.appendChild(item);
-        });
-    }
-
-    // auto-detect based on auto setting parameters
+    // auto-detect
     document.getElementById('optimizeHyperparametersBtn').addEventListener('click', function () {
         const currentModal = bootstrap.Modal.getInstance(document.getElementById('autoDetectAnomaliesModal'));
         currentModal.hide();
@@ -1353,7 +1252,7 @@
             }
         }, 7000);
 
-        const url = "{{ url_for('detect_anomalies.i_forest') }}";
+        const url = "{{ url_for('detect_anomalies.norm_a') }}";
         const body = {
             hyperparameters: 0,
             data: fullData,
@@ -1368,7 +1267,15 @@
             },
             body: JSON.stringify(body)
         })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        console.error('Server Error:', text);
+                        throw new Error('Server returned an error.');
+                    });
+                }
+                return response.json();
+            })
             .then(data => {
                 clearInterval(interval);
                 progress = 100;
@@ -1381,12 +1288,40 @@
                     flags = data.flags;
                     markAnomalies();
 
-                    const modal = new bootstrap.Modal(document.getElementById('thresholdTableModal'));
-                    modal.show();
-
-                    renderSummaryTable(data.global_score_stats.anomaly_threshold_stats);
-                    renderMislabeledAnomalies(data.suspects, data.global_scores);
+                    globalScores = data.global_scores;
                     enableRevisePotentialMislabeledAnomaliesPhase();
+
+
+                    document.querySelector('#option1 span span').innerText = data.score_98.toFixed(4);
+                    document.querySelector('#option2 span span').innerText = data.score_92.toFixed(4);
+                    document.querySelector('#option3 span span').innerText = data.score_85.toFixed(4);
+                    document.getElementById('potentialMislabeledAnomaliesList').classList.remove('d-none');
+
+
+                    // =================================================================================================
+
+
+                    // temp
+                    ['option1', 'option2', 'option3'].forEach(optionId => {
+                        document.getElementById(`${optionId}ViewBtn`).addEventListener('click', function () {
+                            const thresholdElem = document.querySelector(`#${optionId} .me-6 span span`);
+                            const threshold = parseFloat(thresholdElem.innerText);
+
+                            globalScores.forEach((score, i) => {
+                                if (isInBrushAreas(i) && flags[i] !== 1 && flags[i] !== 3) {
+                                    flags[i] = score >= threshold ? 4 : 0;
+                                }
+                            });
+
+                            markAnomalies();
+                            updateAnomaliesNum();
+                        });
+                    });
+
+
+                    // =================================================================================================
+
+
                 }, 500);
             })
             .catch(error => {
@@ -1423,7 +1358,6 @@
     }
 
 
-    //
     let wheelHandler = function () {
         cancelSequentialMode();
     };
@@ -1764,6 +1698,33 @@
 
 
     }
+
+
+    // Set threshold by slide bar after auto-detect util funct
+    function debounce(fn, delay) {
+        let timer = null;
+        return function (...args) {
+            clearTimeout(timer);
+            timer = setTimeout(() => fn.apply(this, args), delay);
+        };
+    }
+
+    // Set threshold by slide bar after auto-detect
+    document.getElementById('scoreThresholdSlideBar').addEventListener('input', debounce(function () {
+        const output = document.getElementById('thresholdSlideBarValue');
+        const threshold = parseFloat(this.value);
+        output.textContent = threshold.toFixed(3);
+
+        globalScores.forEach((score, i) => {
+            if (isInBrushAreas(i) && flags[i] !== 1 && flags[i] !== 3) {
+                flags[i] = score >= threshold ? 4 : 0;
+            }
+        });
+
+        markAnomalies();
+        updateAnomaliesNum();
+
+    }, 50));
 
 
 </script>

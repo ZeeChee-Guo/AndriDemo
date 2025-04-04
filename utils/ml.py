@@ -31,7 +31,7 @@ def compute_global_scores(data_arr):
     return pattern_length, padded_scores
 
 
-def norm_a(data, flags, areas, z_threshold=-2.5, delta_threshold=0.07, clustering_diff_threshold=0.1):
+def norm_a_scoring(data, flags, areas, z_threshold=-2.5, delta_threshold=0.07, clustering_diff_threshold=0.1):
     warnings.simplefilter("ignore", pd.errors.PerformanceWarning)
     flags = np.array(flags)
     flags[np.isin(flags, [1, 3, 4])] = 1
@@ -40,23 +40,7 @@ def norm_a(data, flags, areas, z_threshold=-2.5, delta_threshold=0.07, clusterin
     data_arr = np.array(data, dtype=float).flatten()
     pattern_length, global_scores = compute_global_scores(data_arr)
 
-    mean_score = np.mean(global_scores)
-    std_score = np.std(global_scores)
-    thresholds = [mean_score + i * std_score for i in range(4)]
-    threshold_labels = ["mean", "mean+1std", "mean+2std", "mean+3std"]
-    total_points = len(global_scores)
-    anomaly_stats = []
 
-    for i, threshold in enumerate(thresholds):
-        anomaly_mask = global_scores >= threshold
-        count = int(np.sum(anomaly_mask))
-        ratio = float(count / total_points)
-        anomaly_stats.append({
-            'threshold_type': threshold_labels[i],
-            'threshold_value': float(threshold),
-            'anomaly_count': count,
-            'anomaly_ratio': ratio
-        })
 
     for area in areas:
         start = int(area['start'])
@@ -115,15 +99,17 @@ def norm_a(data, flags, areas, z_threshold=-2.5, delta_threshold=0.07, clusterin
 
     suspect_indices = sorted(set(suspect_indices))
 
+    score_98 = float(np.percentile(global_scores, 98))
+    score_92 = float(np.percentile(global_scores, 92))
+    score_85 = float(np.percentile(global_scores, 85))
+
     return {
         'suspects': suspect_indices,
         'flags': flags.tolist(),
-        'global_score_stats': {
-            'mean': float(mean_score),
-            'std': float(std_score),
-            'anomaly_threshold_stats': anomaly_stats
-        },
-        'global_scores': global_scores.tolist()
+        'global_scores': global_scores.tolist(),
+        'score_98': score_98,
+        'score_92': score_92,
+        'score_85': score_85
     }
 
 
