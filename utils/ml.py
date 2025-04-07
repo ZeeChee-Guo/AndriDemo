@@ -109,8 +109,8 @@ def norm_a_scoring(data, flags, areas, z_threshold=-2.5, delta_threshold=0.07, c
     suspect_indices = sorted(set(suspect_indices))
 
     score_98 = float(np.percentile(global_scores, 98))
-    score_92 = float(np.percentile(global_scores, 92))
-    score_85 = float(np.percentile(global_scores, 85))
+    score_92 = float(np.percentile(global_scores, 84))
+    score_85 = float(np.percentile(global_scores, 70))
 
     return {
         'suspects': suspect_indices,
