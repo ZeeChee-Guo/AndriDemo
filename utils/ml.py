@@ -3,12 +3,12 @@ from joblib import Memory
 
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import MinMaxScaler
+import warnings
+import pandas as pd
 
 from external.a2d2.util.TSB_AD.models.norma import NORMA
 from external.a2d2.util.util_a2d2 import find_length
 
-import warnings
-import pandas as pd
 import io
 import contextlib
 
@@ -40,16 +40,16 @@ def compute_global_scores(data_arr):
 
 
 
-def norm_a_scoring(data, flags, areas, z_threshold=-2.5, delta_threshold=0.07, clustering_diff_threshold=0.1):
+def norm_a_scoring(data, flags, areas, z_threshold=-2.5, delta_threshold=0.07,
+                   fixed_n=5, prop=0.5, cohens_d_threshold=0.1):
+
+
     warnings.simplefilter("ignore", pd.errors.PerformanceWarning)
     flags = np.array(flags)
     flags[np.isin(flags, [1, 3, 4])] = 1
-    suspect_indices = []
 
     data_arr = np.array(data, dtype=float).flatten()
     pattern_length, global_scores = compute_global_scores(data_arr)
-
-
 
     for area in areas:
         start = int(area['start'])
@@ -65,60 +65,73 @@ def norm_a_scoring(data, flags, areas, z_threshold=-2.5, delta_threshold=0.07, c
 
         flagged_indices = np.where(area_flags == 1)[0]
         sensitivity_mislabels = []
-        if len(flagged_indices) > 0:
-            flagged_scores = area_scores[flagged_indices]
-            median_score = np.median(flagged_scores)
-            mad = np.median(np.abs(flagged_scores - median_score))
-            if mad == 0:
-                mad = 1e-6
+        if flagged_indices.size > 0:
+            fscores = area_scores[flagged_indices]
+            median_score = np.median(fscores)
+            mad = np.median(np.abs(fscores - median_score)) or 1e-6
             for i, idx in enumerate(flagged_indices):
-                score_i = area_scores[idx]
-                z = (score_i - median_score) / mad
-                remaining = np.delete(flagged_scores, i)
-                loo_threshold = np.min(remaining) if len(remaining) > 0 else original_threshold
-                delta = loo_threshold - original_threshold
-                if z < z_threshold or delta > delta_threshold:
+                z = (area_scores[idx] - median_score) / mad
+                loo_thr = np.min(np.delete(fscores, i)) if fscores.size > 1 else original_threshold
+                if z < z_threshold or (loo_thr - original_threshold) > delta_threshold:
                     sensitivity_mislabels.append(int(idx))
 
-        clustering_mislabels = []
-        if len(flagged_indices) > 1:
-            flagged_scores = area_scores[flagged_indices]
-            X = flagged_scores.reshape(-1, 1)
-            kmeans = KMeans(n_clusters=2, random_state=42).fit(X)
-            labels = kmeans.labels_
-            centers = kmeans.cluster_centers_.ravel()
-            lower_cluster = int(np.argmin(centers))
-            if np.abs(centers[0] - centers[1]) > clustering_diff_threshold:
-                clustering_mislabels = [int(idx) for idx in flagged_indices[labels == lower_cluster]]
+        window_mislabels = []
+        segments = []
+        if flagged_indices.size > 0:
+            run_start = flagged_indices[0]
+            prev = run_start
+            for idx in flagged_indices[1:]:
+                if idx == prev + 1:
+                    prev = idx
+                else:
+                    segments.append((run_start, prev))
+                    run_start = idx
+                    prev = idx
+            segments.append((run_start, prev))
 
-        combined_mislabels = sorted(set(sensitivity_mislabels).union(set(clustering_mislabels)))
+        for seg_start, seg_end in segments:
+            L = seg_end - seg_start + 1
+            win_len = max(fixed_n, int(np.ceil(prop * L)))
+            win_start = max(0, seg_start - win_len)
+            win_end = min(len(area_scores) - 1, seg_end + win_len)
 
-        for idx in combined_mislabels:
-            suspect_indices.append(start + idx)
+            seg_scores = area_scores[seg_start:seg_end+1]
+            ext_idxs = np.concatenate([
+                np.arange(win_start, seg_start),
+                np.arange(seg_end+1, win_end+1)
+            ])
+            ext_scores = area_scores[ext_idxs] if ext_idxs.size > 0 else np.array([])
 
-        union_mask = (area_flags == 1) | (np.isin(np.arange(len(area_flags)), combined_mislabels))
-        threshold = np.min(area_scores[union_mask]) if np.any(union_mask) else np.percentile(area_scores, 95)
+            mean_seg, std_seg = np.mean(seg_scores), np.std(seg_scores, ddof=1)
+            if ext_scores.size > 0:
+                mean_ext, std_ext = np.mean(ext_scores), np.std(ext_scores, ddof=1)
+            else:
+                mean_ext, std_ext = mean_seg, std_seg
 
-        for idx in combined_mislabels:
+            dof = seg_scores.size + ext_scores.size - 2
+            pooled_var = ((seg_scores.size - 1) * std_seg**2 +
+                          (ext_scores.size - 1) * std_ext**2) / dof if dof > 0 else std_seg**2
+            pooled_sd = np.sqrt(pooled_var) if pooled_var > 0 else 1e-6
+            cohens_d = (mean_seg - mean_ext) / pooled_sd
+
+            if abs(cohens_d) < cohens_d_threshold:
+                window_mislabels.extend(range(seg_start, seg_end+1))
+
+        combined = sorted(set(sensitivity_mislabels) | set(window_mislabels))
+        union_mask = (area_flags == 1) | (np.isin(np.arange(len(area_flags)), combined))
+        threshold = np.min(area_scores[union_mask]) if union_mask.any() else np.percentile(area_scores, 95)
+
+        for idx in combined:
             flags[start + idx] = 3
-
-        for i in range(len(area_scores)):
-            if area_scores[i] >= threshold and flags[start + i] not in [1, 3]:
+        for i, score in enumerate(area_scores):
+            if score >= threshold and flags[start + i] not in [1, 3]:
                 flags[start + i] = 4
 
-    suspect_indices = sorted(set(suspect_indices))
-
-    score_98 = float(np.percentile(global_scores, 98))
-    score_92 = float(np.percentile(global_scores, 84))
-    score_85 = float(np.percentile(global_scores, 70))
+    flags_list = flags.tolist()
+    scores_list = list(global_scores)
 
     return {
-        'suspects': suspect_indices,
-        'flags': flags.tolist(),
-        'global_scores': global_scores.tolist(),
-        'score_98': score_98,
-        'score_92': score_92,
-        'score_85': score_85
+        'flags': flags_list,
+        'global_scores': scores_list,
     }
-
 
