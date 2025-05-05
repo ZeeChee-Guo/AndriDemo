@@ -5,3 +5,7 @@ venv/
 .idea/
 
 norma_cache
+
+data
+
+results

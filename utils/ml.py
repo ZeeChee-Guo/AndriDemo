@@ -1,7 +1,6 @@
 import numpy as np
 from joblib import Memory
 
-from sklearn.cluster import KMeans
 from sklearn.preprocessing import MinMaxScaler
 import warnings
 import pandas as pd
@@ -18,12 +17,13 @@ memory = Memory(location="./norma_cache", verbose=0)
 
 
 @memory.cache
-def compute_global_scores(data_arr):
+def compute_global_scores(data_arr, pattern_length=None):
     """Fit NORMA and return pattern_length and normalized scores with padding."""
 
     f = io.StringIO()
     with contextlib.redirect_stdout(f):
-        pattern_length = find_length(data_arr)
+        if pattern_length is None:
+            pattern_length = find_length(data_arr)
 
         clf_global = NORMA(
             pattern_length=pattern_length,
@@ -40,98 +40,52 @@ def compute_global_scores(data_arr):
 
 
 
-def norm_a_scoring(data, flags, areas, z_threshold=-2.5, delta_threshold=0.07,
-                   fixed_n=5, prop=0.5, cohens_d_threshold=0.1):
-
-
+def norm_a_scoring(data, flags, areas, pattern_length=None):
     warnings.simplefilter("ignore", pd.errors.PerformanceWarning)
     flags = np.array(flags)
     flags[np.isin(flags, [1, 3, 4])] = 1
 
     data_arr = np.array(data, dtype=float).flatten()
-    pattern_length, global_scores = compute_global_scores(data_arr)
+    pattern_length, global_scores = compute_global_scores(data_arr, pattern_length=pattern_length)
 
+
+    all_area_scores = []
     for area in areas:
-        start = int(area['start'])
-        end = int(area['end'])
+        s, e = int(area['start']), int(area['end'])
+        all_area_scores.append(global_scores[s:e+1])
+    all_area_scores = np.concatenate(all_area_scores) if all_area_scores else np.array([])
 
-        area_flags = flags[start:end+1].copy()
-        area_scores = global_scores[start:end+1]
+    area_75_percentile = float(np.percentile(all_area_scores, 75))
 
-        if np.any(area_flags == 1):
-            original_threshold = np.min(area_scores[area_flags == 1])
-        else:
-            original_threshold = np.percentile(area_scores, 95)
+    user_flagged_idxs = np.where(flags == 1)[0]
+    user_flagged_scores = global_scores[user_flagged_idxs]
+    user_25_percentile = float(np.percentile(user_flagged_scores, 25))
 
-        flagged_indices = np.where(area_flags == 1)[0]
-        sensitivity_mislabels = []
-        if flagged_indices.size > 0:
-            fscores = area_scores[flagged_indices]
-            median_score = np.median(fscores)
-            mad = np.median(np.abs(fscores - median_score)) or 1e-6
-            for i, idx in enumerate(flagged_indices):
-                z = (area_scores[idx] - median_score) / mad
-                loo_thr = np.min(np.delete(fscores, i)) if fscores.size > 1 else original_threshold
-                if z < z_threshold or (loo_thr - original_threshold) > delta_threshold:
-                    sensitivity_mislabels.append(int(idx))
+    threshold = (area_75_percentile + user_25_percentile) / 2
 
-        window_mislabels = []
-        segments = []
-        if flagged_indices.size > 0:
-            run_start = flagged_indices[0]
-            prev = run_start
-            for idx in flagged_indices[1:]:
-                if idx == prev + 1:
-                    prev = idx
-                else:
-                    segments.append((run_start, prev))
-                    run_start = idx
-                    prev = idx
-            segments.append((run_start, prev))
+    # Create a mask of indices that are in areas
+    area_mask = np.zeros_like(flags, dtype=bool)
+    for area in areas:
+        start, end = int(area['start']), int(area['end'])
+        area_mask[start:end+1] = True
 
-        for seg_start, seg_end in segments:
-            L = seg_end - seg_start + 1
-            win_len = max(fixed_n, int(np.ceil(prop * L)))
-            win_start = max(0, seg_start - win_len)
-            win_end = min(len(area_scores) - 1, seg_end + win_len)
+    # Reset all flags outside areas to 0
+    flags[~area_mask] = 0
 
-            seg_scores = area_scores[seg_start:seg_end+1]
-            ext_idxs = np.concatenate([
-                np.arange(win_start, seg_start),
-                np.arange(seg_end+1, win_end+1)
-            ])
-            ext_scores = area_scores[ext_idxs] if ext_idxs.size > 0 else np.array([])
+    # Update flags within areas based on threshold
+    for i in np.where(area_mask)[0]:
+        score = global_scores[i]
+        if flags[i] == 1 and score < threshold:
+            flags[i] = 3
+        elif flags[i] in [0, 3] and score >= threshold:
+            flags[i] = 4
 
-            mean_seg, std_seg = np.mean(seg_scores), np.std(seg_scores, ddof=1)
-            if ext_scores.size > 0:
-                mean_ext, std_ext = np.mean(ext_scores), np.std(ext_scores, ddof=1)
-            else:
-                mean_ext, std_ext = mean_seg, std_seg
-
-            dof = seg_scores.size + ext_scores.size - 2
-            pooled_var = ((seg_scores.size - 1) * std_seg**2 +
-                          (ext_scores.size - 1) * std_ext**2) / dof if dof > 0 else std_seg**2
-            pooled_sd = np.sqrt(pooled_var) if pooled_var > 0 else 1e-6
-            cohens_d = (mean_seg - mean_ext) / pooled_sd
-
-            if abs(cohens_d) < cohens_d_threshold:
-                window_mislabels.extend(range(seg_start, seg_end+1))
-
-        combined = sorted(set(sensitivity_mislabels) | set(window_mislabels))
-        union_mask = (area_flags == 1) | (np.isin(np.arange(len(area_flags)), combined))
-        threshold = np.min(area_scores[union_mask]) if union_mask.any() else np.percentile(area_scores, 95)
-
-        for idx in combined:
-            flags[start + idx] = 3
-        for i, score in enumerate(area_scores):
-            if score >= threshold and flags[start + i] not in [1, 3]:
-                flags[start + i] = 4
-
-    flags_list = flags.tolist()
-    scores_list = list(global_scores)
 
     return {
-        'flags': flags_list,
-        'global_scores': scores_list,
+        'global_scores': list(global_scores),
+        'pattern_length': int(pattern_length),
+        'training_set_75_percentile': float(area_75_percentile),
+        'user_25_percentile': float(user_25_percentile),
+        'threshold': float(threshold),
+        'flags': list(map(int, flags)),
     }
-
