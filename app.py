@@ -9,6 +9,10 @@ register_blueprints(app)
 def index():
     return render_template('index.html')
 
+@app.route('/test1')
+def test1():
+    return render_template('test.html')
+
 
 if __name__ == '__main__':
     app.run()

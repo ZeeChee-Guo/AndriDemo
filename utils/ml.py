@@ -8,9 +8,6 @@ import pandas as pd
 from external.a2d2.util.TSB_AD.models.norma import NORMA
 from external.a2d2.util.util_a2d2 import find_length
 
-import io
-import contextlib
-
 
 memory = Memory(location="./norma_cache", verbose=0)
 
@@ -20,23 +17,23 @@ memory = Memory(location="./norma_cache", verbose=0)
 def compute_global_scores(data_arr, pattern_length=None):
     """Fit NORMA and return pattern_length and normalized scores with padding."""
 
-    f = io.StringIO()
-    with contextlib.redirect_stdout(f):
-        if pattern_length is None:
-            pattern_length = find_length(data_arr)
 
-        clf_global = NORMA(
-            pattern_length=pattern_length,
-            nm_size=3 * pattern_length,
-            percentage_sel=1,
-            normalize='z-norm'
-        )
-        clf_global.fit(data_arr)
-        global_scores = np.array(clf_global.decision_scores_)
-        global_scores = MinMaxScaler(feature_range=(0, 1)).fit_transform(global_scores.reshape(-1, 1)).ravel()
-        pad = (pattern_length - 1) // 2
-        padded_scores = np.array([global_scores[0]] * pad + list(global_scores) + [global_scores[-1]] * pad)
-    return pattern_length, padded_scores
+    if pattern_length is None:
+        pattern_length = find_length(data_arr)
+
+    clf_global = NORMA(
+        pattern_length=pattern_length,
+        nm_size=3 * pattern_length,
+        percentage_sel=1,
+        normalize='z-norm'
+    )
+    clf_global.fit(data_arr)
+    global_scores = np.array(clf_global.decision_scores_)
+    global_scores = MinMaxScaler(feature_range=(0, 1)).fit_transform(global_scores.reshape(-1, 1)).ravel()
+    pad = (pattern_length - 1) // 2
+    padded_scores = np.array([global_scores[0]] * pad + list(global_scores) + [global_scores[-1]] * pad)
+
+    return pattern_length, padded_scores, clf_global.normalmodel[0], clf_global.normalmodel[1]
 
 
 
@@ -46,7 +43,7 @@ def norm_a_scoring(data, flags, areas, pattern_length=None):
     flags[np.isin(flags, [1, 3, 4])] = 1
 
     data_arr = np.array(data, dtype=float).flatten()
-    pattern_length, global_scores = compute_global_scores(data_arr, pattern_length=pattern_length)
+    pattern_length, global_scores, nms, weights = compute_global_scores(data_arr, pattern_length=pattern_length)
 
 
     all_area_scores = []
@@ -88,4 +85,6 @@ def norm_a_scoring(data, flags, areas, pattern_length=None):
         'user_25_percentile': float(user_25_percentile),
         'threshold': float(threshold),
         'flags': list(map(int, flags)),
+        'nms': nms,
+        'weights': weights
     }
