@@ -1,5 +1,3 @@
-<!-- 5.14 16.02 -->
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -121,6 +119,14 @@
             height: 100%;
         }
 
+        .showNormalPattern {
+            flex: 0 0 50%;
+            flex-direction: column;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
     </style>
 </head>
 <body>
@@ -218,6 +224,21 @@
                 </p>
             </div>
 
+
+            <!-- Revise Potential Mislabeled Anomalies Title -->
+            <div class="p-3 bg-light border rounded small text-center mt-2 d-flex flex-column justify-content-center d-none"
+                 id="revisePotentialMislabeledAnomaliesTitle">
+                <h3 class="text-dark fw-bold mb-1 fs-3">Revise Possible Mislabeled Anomalies</h3>
+                <p class="text-muted mb-2 fs-6">
+                    The following is a list of possible anomalies that are incorrectly labeled.
+                </p>
+                <button id="finshPotentialMislabeledAnomaliesPhaseBtn"
+                        class="btn btn-outline-success btn-sm w-50 mx-auto"
+                        style="box-shadow: 0 0 8px rgba(40, 167, 69, 0.5);">
+                    Finish Marking Anomalies
+                </button>
+            </div>
+
             <!-- Upper Histogram Chart -->
             <div class="inner">
                 <div class="upper-histogram p-0 d-flex flex-column d-none" id="upperHistogramChart">
@@ -237,8 +258,8 @@
         <div class="panel-section" id="panelSection">
 
             <!-- Stats section3 -->
-            <div id="datasetStats3" class="card p-2 mt-1 d-none w-100">
-                <div class="card-body p-2">
+            <div id="datasetStats3" class="card p-0 mt-1 d-none w-100">
+                <div class="card-body p-1">
                     <div class="d-flex justify-content-between">
                         <div><strong>Total Data:</strong> <span class="text-success" id="totalRecords3">0</span>
                         </div>
@@ -253,8 +274,8 @@
             </div>
 
             <!-- Stats section2 -->
-            <div id="datasetStats2" class="card p-2 mt-1 w-100 d-none">
-                <div class="card-body p-2">
+            <div id="datasetStats2" class="card p-0 mt-1 w-100 d-none">
+                <div class="card-body p-1">
                     <div class="d-flex justify-content-between">
                         <div><strong>User Marked:</strong> <span style="color: rgba(255, 30, 0, 1);"
                                                                  id="markedByUser">0</span>
@@ -368,25 +389,10 @@
                 </button>
             </div>
 
-
-            <!-- Cancel Marked, Mark Anomalies, Mark Normal Points Section -->
-            <div class="p-2 border border-dark rounded shadow-sm mt-1 d-none" id="cancelMarkedPointsSection">
-                <p class="text-muted text-center mb-1">
-                    Drag out an area on the chart to cancel marked points
-                </p>
-                <div class="text-center">
-                    <button id="cancelMarkedPointsBtn" class="btn btn-outline-primary btn-sm">Cancel Marked Points
-                    </button>
-                    <button id="markAnomaliesPointsBtn" class="btn btn-outline-danger btn-sm">Mark Anomalies</button>
-                    <button id="markNormalPointsBtn" class="btn btn-outline-success btn-sm">Mark Normal Points</button>
-                    <button id="undoCancelMarkedPointsBtn" class="btn btn-outline-secondary btn-sm">Undo</button>
-                </div>
-            </div>
-
-
             <!-- Auto Detect Again and Show Advanced Stats Section -->
-            <div class="p-2 bg-light border border-dark rounded shadow-sm mt-2 text-center d-none"
+            <div class="p-2 bg-light border border-dark rounded shadow-sm mt-1 text-center d-none"
                  id="showAdvancedStatsSection">
+                <button id="markMoreAnomaliesBtn" class="btn btn-outline-danger btn-sm ">Mark More Anomalies</button>
                 <button id="autoDetectAgainBtn" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal"
                         data-bs-target="#autoDetectAnomaliesModal">Auto Detect Again
                 </button>
@@ -394,6 +400,26 @@
                         data-bs-target="#evaluationModal">
                     Test on Testing Sets
                 </button>
+            </div>
+
+
+            <!-- Show Normal Pattern -->
+            <div id="showNormalPatternArea" class="mt-1 w-100 showNormalPattern d-none" style="height: 100%;">
+                <div id="normalPatternChart" style="height: 90%; width: 100%;"></div>
+                <div id="normalPatternButtons" style="height: 10%; width: 100%; " class="d-flex gap-1 ">
+                    <button id="removePointsBtn" class="btn btn-outline-danger btn-sm w-50">Remove Points
+                    </button>
+                    <button id="keepPointsBtn" class="btn btn-outline-primary btn-sm w-50">Keep Points
+                    </button>
+                </div>
+
+                <div id="moreAnomaliesButtons" style="height: 10%; width: 100%; " class="d-flex gap-1 d-none">
+                    <button id="markUnlabeledPointsBtn" class="btn btn-outline-danger btn-sm w-50">Mark as Anomalies
+                    </button>
+                    <button id="keepUnlabeledPointsBtn" class="btn btn-outline-primary btn-sm w-50">Keep Points
+                    </button>
+                </div>
+
             </div>
 
 
@@ -571,6 +597,7 @@
     // flags: 0: unknown, 1: anomaly, 2: normal, 3: possible mislabeled points, 4: anomaly marked by system
     // 5:
     let point_dic = {
+        99: {'size': 12, 'symbol': 'circle', 'color': 'rgba(123, 31, 162, 1)'}, // for unmark (function addAnomaly layer)
         0: {'size': 4, 'symbol': 'emptyCircle', 'color': 'rgba(100, 149, 237, 0.8)'},
         1: {'size': 11, 'symbol': 'circle', 'color': 'rgba(255, 30, 0, 0.9)'},
         2: {'size': 9, 'symbol': 'circle', 'color': 'rgba(60, 179, 113, 0.9)'},
@@ -627,16 +654,21 @@
 
 
     // NormA Params:
-    let norm_a_pattern_length = 0;
     let norm_a_training_set_75_percentile = 0;
     let norm_a_user_25_percentile = 0;
     let norm_a_threshold = 0;
-    let currentMinScoreNormA = -Infinity;
-    let norm_a_norm_patterns, norm_a_weights;
-
+    let norm_a_normal_patterns, norm_a_weights, norm_a_l;
+    let norm_a_normal_pattern_chart = null;
+    const normal_pattern_chart_backDom = document.getElementById("normalPatternChart");
 
     // evaluation modal
     const evaModal = new bootstrap.Modal(document.getElementById('evaluationModal'));
+
+
+    // flags_for_revise_mislabels
+    let flags_for_revise_mislabels = [];
+    let retained_mislabeled_points = [];
+    let retained_unlabeled_points = [];
 
 
     function initCharts() {
@@ -813,7 +845,7 @@
             chart2.resize();
             if (scoreChart) scoreChart.resize();
             if (scoreBackChart) scoreBackChart.resize();
-
+            if (norm_a_normal_pattern_chart) norm_a_normal_pattern_chart.resize();
         });
 
 
@@ -874,27 +906,40 @@
                 zoomRange = Math.round(Math.abs(zoomRange) / 2);
                 start = Math.max(0, index - zoomRange);
                 end = Math.min(fullData.length - 1, index + zoomRange);
+
+                chart2.dispatchAction({
+                    type: "dataZoom",
+                    startValue: start,
+                    endValue: end,
+                });
                 break;
 
             case 2:
                 start = Math.max(0, index - 500);
                 end = Math.min(fullData.length - 1, index + 500);
+
+                chart2.dispatchAction({
+                    type: "dataZoom",
+                    startValue: start,
+                    endValue: end,
+                });
                 break;
 
             case 3:
-                start = Math.max(0, index - 1.5 * norm_a_pattern_length);
-                end = Math.min(fullData.length - 1, 1.5 * norm_a_pattern_length);
+                start = Math.max(0, index - 1.5 * norm_a_l);
+                end = Math.min(fullData.length - 1, 1.5 * norm_a_l);
+
+                chart2.dispatchAction({
+                    type: "dataZoom",
+                    startValue: start,
+                    endValue: end,
+                });
                 break;
 
-            default:
-                start = Math.max(0, index - 50);
-                end = Math.min(fullData.length - 1, index + 50);
+            case 4:
+                break;
         }
-        chart2.dispatchAction({
-            type: "dataZoom",
-            startValue: start,
-            endValue: end,
-        });
+
     }
 
 
@@ -1279,7 +1324,6 @@
     // rename chart2 title
     function renameChart2Title(title, subtitle) {
         let currentOptions = chart2.getOption();
-
         chart2.setOption({
             title: {
                 text: title,
@@ -1287,7 +1331,6 @@
             }
         });
     }
-
 
     // rename chart1 title
     function renameChart1Title(title, subtitle) {
@@ -1297,6 +1340,16 @@
             title: {
                 text: title,
                 subtext: subtitle !== undefined ? subtitle : currentOptions.title[0].subtext
+            }
+        });
+    }
+
+
+    // rename norm a normal pattern chart
+    function renameNormANormalPatternChartTitle(title) {
+        norm_a_normal_pattern_chart.setOption({
+            title: {
+                text: title,
             }
         });
     }
@@ -1388,28 +1441,6 @@
     }
 
 
-    function markAnomaliesByMultipleRanges(
-        originalFlags,
-        scores,
-        rangesMap,
-        visible1 = [0, 1, 2, 3, 4],
-        visible2 = [0, 1, 2, 3, 4], min_score = -Infinity
-    ) {
-        const flagsToShow = Object.keys(rangesMap).map(k => Number(k));
-        const vis1 = Array.isArray(visible1) ? visible1 : flagsToShow;
-        const vis2 = Array.isArray(visible2) ? visible2 : flagsToShow;
-
-        const filteredFlags = originalFlags.map((f, i) => {
-            const range = rangesMap[f];
-            if (range != null && scores[i] >= range.min && scores[i] <= range.max) {
-                return f;
-            }
-            return 0;
-        });
-        markAnomalies(filteredFlags, vis1, vis2, min_score);
-    }
-
-
     // for add anomaly layer
     function buildBucketAverages(data, chart) {
         const width = chart.getWidth();
@@ -1487,8 +1518,8 @@
                 flags[currentDataIndex] = 2;
             }
 
-            addAnomalyLayer(chart1,fullData,flags,1);
-            markAnomalies(flags, [], [1,2,3,4]);
+            addAnomalyLayer(chart1, fullData, flags, 1);
+            markAnomalies(flags, [], [1, 2, 3, 4]);
         }
         hideContextMenu();
     }
@@ -1530,7 +1561,7 @@
             }
         }
 
-        markAnomalies(flags, [], [0,1,2,3,4]);
+        markAnomalies(flags, [], [0, 1, 2, 3, 4]);
         addAnomalyLayer(chart1, fullData, flags, 1)
     }
 
@@ -1618,19 +1649,21 @@
 
                 setTimeout(() => {
                     loadingModal.hide();
-                    norm_a_pattern_length = data.pattern_length;
+                    norm_a_l = data.pattern_length;
                     flags = data.flags;
                     globalScores = data.global_scores;
                     norm_a_training_set_75_percentile = data.training_set_75_percentile;
                     norm_a_user_25_percentile = data.user_25_percentile;
                     norm_a_threshold = data.threshold;
-                    norm_a_norm_patterns = data.nms;
+                    norm_a_normal_patterns = data.nms;
                     norm_a_weights = data.weights;
+                    clickRangeScale = 4;
                     enableRevisePotentialMislabeledAnomaliesPhase();
                     updateThresholdForHistogramBins();
                     updateFlagsBasedOnThreshold();
-                    markAnomalies(flags, [], [0, 1, 2, 3, 4]);
-                    addAnomalyLayer(chart1, fullData, flags, 3);
+
+
+                    flags_for_revise_mislabels = new Array(flags.length).fill(0);
                     updateStatsSection2(flags, globalScores);
                     initUpperHistogramChart();
                     findMinMislabeledPointsScoreIndex();
@@ -1649,20 +1682,43 @@
     // =========================↑
 
 
-    // zoom in to lowest mislabeled points
+    // zoom in to lowest mislabeled points and show mislabeled points
     function findMinMislabeledPointsScoreIndex() {
         let minIndex = -1;
         let minScore = Infinity;
 
         for (let i = 0; i < flags.length; i++) {
-            if (flags[i] === 1 || flags[i] === 3) {
+            if (retained_mislabeled_points.includes(i)) continue;
+            if (flags[i] === 3) {
                 if (globalScores[i] < minScore) {
                     minScore = globalScores[i];
                     minIndex = i;
                 }
             }
         }
-        const zoomRange = Math.round(1.5 * norm_a_pattern_length);
+
+        if (minIndex === -1) {
+            flags_for_revise_mislabels = flags_for_revise_mislabels.map(v => v === 3 ? 0 : v);
+            markAnomalies(flags_for_revise_mislabels, [], [0]);
+            addAnomalyLayer(chart1, fullData, flags_for_revise_mislabels, 99);
+            alert("No more possible mislabeled points");
+            return;
+        }
+
+        const zoomRange = Math.round(1.5 * norm_a_l);
+
+        const min_bound = Math.floor(Math.max(0, minIndex - 0.5 * norm_a_l));
+        const max_bound = Math.ceil(Math.min(flags.length - 1, minIndex + 0.5 * norm_a_l));
+
+        flags_for_revise_mislabels = flags.map((flag, idx) => {
+            if (flag === 3 && idx >= min_bound && idx <= max_bound
+            ) {
+                return 3;
+            } else {
+                return 0;
+            }
+        });
+
 
         chart2.dispatchAction({
             type: "dataZoom",
@@ -1670,7 +1726,185 @@
             endValue: Math.min(fullData.length - 1, minIndex + zoomRange)
         });
 
+        markAnomalies(flags_for_revise_mislabels, [], [3]);
+        addAnomalyLayer(chart1, fullData, flags_for_revise_mislabels, 3);
+
+        findSimilarNormalPatterns(min_bound, max_bound);
     }
+
+
+    function findMaxUnlabeledPointsScoreIndex() {
+        let maxIndex = -1;
+        let maxScore = -Infinity;
+
+        const top_5_score = get95thPercentile(globalScores, 0.95);
+
+        for (let i = 0; i < flags.length; i++) {
+            if (retained_unlabeled_points.includes(i)) continue;
+            if (flags[i] === 4 && globalScores[i] >= top_5_score) {
+                if (globalScores[i] > maxScore) {
+                    maxScore = globalScores[i];
+                    maxIndex = i;
+                }
+            }
+        }
+
+        if (maxIndex === -1) {
+            flags_for_revise_mislabels = flags_for_revise_mislabels.map(v => v === 4 ? 1 : v);
+            markAnomalies(flags_for_revise_mislabels, [], [1]);
+            addAnomalyLayer(chart1, fullData, flags_for_revise_mislabels, 99);
+            alert("No more possible unlabeled anomalies");
+            return;
+        }
+
+
+        const zoomRange = Math.round(1.5 * norm_a_l);
+
+        const min_bound = Math.floor(Math.max(0, maxIndex - 0.5 * norm_a_l));
+        const max_bound = Math.ceil(Math.min(flags.length - 1, maxIndex + 0.5 * norm_a_l));
+
+        flags_for_revise_mislabels = flags.map((flag, idx) => {
+            if ((flag === 4 || flag === 1) && idx >= min_bound && idx <= max_bound) {
+                return flag;
+            } else {
+                return 0;
+            }
+        });
+
+
+        chart2.dispatchAction({
+            type: "dataZoom",
+            startValue: Math.max(0, maxIndex - zoomRange),
+            endValue: Math.min(fullData.length - 1, maxIndex + zoomRange)
+        });
+
+
+        markAnomalies(flags_for_revise_mislabels, [], [1, 4]);
+        addAnomalyLayer(chart1, fullData, flags_for_revise_mislabels, 4);
+
+    }
+
+
+    // remove mislabeled points
+    document.getElementById('removePointsBtn').addEventListener('click', function () {
+        for (let i = 0; i < flags_for_revise_mislabels.length; i++) {
+            if (flags_for_revise_mislabels[i] === 3) {
+                flags[i] = 0;
+            }
+        }
+
+        norm_a_user_25_percentile = getScoreQuantile(flags, globalScores);
+        norm_a_threshold = (norm_a_user_25_percentile + norm_a_training_set_75_percentile) / 2;
+        updateThresholdForHistogramBins();
+        updateFlagsBasedOnThreshold();
+
+        renderScoreDistributionUpperChart(scoreBackChart, _scores);
+        updateAnomaliesNum();
+        updateStatsSection2(flags, globalScores);
+        findMinMislabeledPointsScoreIndex();
+
+
+    });
+
+
+    // keep mislabeled points
+    document.getElementById('keepPointsBtn').addEventListener('click', function () {
+        flags_for_revise_mislabels.forEach((val, idx) => {
+            if (val === 3 && !retained_mislabeled_points.includes(idx)) {
+                retained_mislabeled_points.push(idx);
+                flags[idx] = 2;
+            }
+        });
+
+        findMinMislabeledPointsScoreIndex();
+        renderScoreDistributionUpperChart(scoreBackChart, _scores);
+    });
+
+
+    // mark unlabeled points as anomalies
+    document.getElementById('markUnlabeledPointsBtn').addEventListener('click', function () {
+        for (let i = 0; i < flags_for_revise_mislabels.length; i++) {
+            if (flags_for_revise_mislabels[i] === 4 || flags_for_revise_mislabels[i] === 1) {
+                flags[i] = 1;
+            }
+        }
+
+        norm_a_user_25_percentile = getScoreQuantile(flags, globalScores);
+        norm_a_threshold = (norm_a_user_25_percentile + norm_a_training_set_75_percentile) / 2;
+        updateThresholdForHistogramBins();
+        updateFlagsBasedOnThreshold();
+
+        renderScoreDistributionUpperChart(scoreBackChart, _scores);
+        updateAnomaliesNum();
+        updateStatsSection2(flags, globalScores);
+        findMaxUnlabeledPointsScoreIndex();
+
+    });
+
+
+    // keep unlabeled points
+    document.getElementById('keepUnlabeledPointsBtn').addEventListener('click', function () {
+        flags_for_revise_mislabels.forEach((val, idx) => {
+            if ((val === 4 || val === 1) && !retained_unlabeled_points.includes(idx)) {
+                retained_unlabeled_points.push(idx);
+                flags[idx] = 2;
+            }
+        });
+
+        findMaxUnlabeledPointsScoreIndex();
+        renderScoreDistributionUpperChart(scoreBackChart, _scores);
+    });
+
+
+    // find similar normal patterns
+    function findSimilarNormalPatterns(startIndex, endIndex) {
+        const url = "{{ url_for('detect_anomalies.find_similar_pattern') }}";
+        const subArray = fullData.slice(startIndex, endIndex + 1);
+
+        const body = {
+            original_seq: subArray,
+            norm_a_normal_patterns: norm_a_normal_patterns,
+        }
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(body)
+        })
+            .then(response => {
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        console.error('Server Error:', text);
+                        throw new Error('Server returned an error.');
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                let nm = data.nm;
+                initNormPatternChart();
+                renderNormalPatternChart(norm_a_normal_pattern_chart, nm);
+            })
+            .catch(error => {
+
+            });
+
+    }
+
+
+    // mark more anomalies
+    document.getElementById('markMoreAnomaliesBtn').addEventListener('click', function () {
+        const maxIndex = norm_a_weights.indexOf(Math.max(...norm_a_weights));
+        renderNormalPatternChart(norm_a_normal_pattern_chart, norm_a_normal_patterns[maxIndex]);
+        renameNormANormalPatternChartTitle('The Most Common Pattern');
+        flags_for_revise_mislabels = [];
+        findMaxUnlabeledPointsScoreIndex();
+        document.getElementById('normalPatternButtons').classList.add('d-none');
+        document.getElementById('moreAnomaliesButtons').classList.remove('d-none');
+    });
+
 
     // update Stats section2 (TP, FP,...)
     function updateStatsSection2(flags, globalScores) {
@@ -1713,21 +1947,6 @@
             markSeqBtn.classList.remove("btn-outline-dark");
             markSeqBtn.classList.add("btn-outline-danger");
 
-            let markNormalBtn = document.getElementById('markNormalPointsBtn');
-            markNormalBtn.textContent = "Mark Normal Points";
-            markNormalBtn.classList.remove("btn-outline-dark");
-            markNormalBtn.classList.add("btn-outline-success");
-
-            let cancelMarkedBtn = document.getElementById('cancelMarkedPointsBtn');
-            cancelMarkedBtn.textContent = "Cancel Marked Points";
-            cancelMarkedBtn.classList.remove("btn-outline-dark");
-            cancelMarkedBtn.classList.add("btn-outline-primary");
-
-            let markAnomaliesBtn = document.getElementById("markAnomaliesPointsBtn");
-            markAnomaliesBtn.textContent = "Mark Anomalies";
-            markAnomaliesBtn.classList.remove("btn-outline-dark");
-            markAnomaliesBtn.classList.add("btn-outline-danger");
-
 
             chart2.getZr().off('mousedown', sequentialHandlers.mousedown);
             chart2.getZr().off('mousemove', sequentialHandlers.mousemove);
@@ -1760,63 +1979,6 @@
                     button.classList.replace("btn-outline-danger", "btn-outline-dark");
                 } else {
                     button.textContent = "Mark Sequential Anomalies";
-                    button.classList.replace("btn-outline-dark", "btn-outline-danger");
-                }
-                break;
-
-            case 'markNormalPointsBtn':
-                if (button.classList.contains("btn-outline-success")) {
-                    sequentialMode = true;
-                    button.textContent = "Finish Mark Normal Points";
-                    button.classList.replace("btn-outline-success", "btn-outline-dark");
-
-                    let otherButton1 = document.getElementById('markAnomaliesPointsBtn');
-                    otherButton1.textContent = "Mark Anomalies";
-                    otherButton1.classList.replace("btn-outline-dark", "btn-outline-danger");
-
-                    let otherButton2 = document.getElementById('cancelMarkedPointsBtn');
-                    otherButton2.textContent = "Cancel Marked Points";
-                    otherButton2.classList.replace("btn-outline-dark", "btn-outline-primary");
-                } else {
-                    button.textContent = "Mark Normal Points";
-                    button.classList.replace("btn-outline-dark", "btn-outline-success");
-                }
-                break;
-
-            case 'cancelMarkedPointsBtn':
-                if (button.classList.contains("btn-outline-primary")) {
-                    sequentialMode = true;
-                    button.textContent = "Finish Cancel Marked Points";
-                    button.classList.replace("btn-outline-primary", "btn-outline-dark");
-
-                    let otherButton1 = document.getElementById("markNormalPointsBtn");
-                    otherButton1.textContent = "Mark Normal Points";
-                    otherButton1.classList.replace("btn-outline-dark", "btn-outline-success");
-
-                    let otherButton2 = document.getElementById("markAnomaliesPointsBtn");
-                    otherButton2.textContent = "Mark Anomalies";
-                    otherButton2.classList.replace("btn-outline-dark", "btn-outline-danger");
-                } else {
-                    button.textContent = "Cancel Marked Points";
-                    button.classList.replace("btn-outline-dark", "btn-outline-primary");
-                }
-                break;
-
-            case 'markAnomaliesPointsBtn':
-                if (button.classList.contains("btn-outline-danger")) {
-                    sequentialMode = true;
-                    button.textContent = "Finish Mark Anomalies";
-                    button.classList.replace("btn-outline-danger", "btn-outline-dark");
-
-                    let otherButton1 = document.getElementById("markNormalPointsBtn");
-                    otherButton1.textContent = "Mark Normal Points";
-                    otherButton1.classList.replace("btn-outline-dark", "btn-outline-success");
-
-                    let otherButton2 = document.getElementById("cancelMarkedPointsBtn");
-                    otherButton2.textContent = "Cancel Marked Points";
-                    otherButton2.classList.replace("btn-outline-dark", "btn-outline-primary");
-                } else {
-                    button.textContent = "Mark Anomalies";
                     button.classList.replace("btn-outline-dark", "btn-outline-danger");
                 }
                 break;
@@ -1909,10 +2071,10 @@
                             stack.push(changedPoints1);
                         }
                         if (scoreBackChart !== null) {
-                            renderScoreDistributionForUpperChart(scoreBackChart, _scores);
+                            renderScoreDistributionUpperChart(scoreBackChart, _scores);
                         }
 
-                        if(currentPhase === 'MarkAnomaliesPhase'){
+                        if (currentPhase === 'MarkAnomaliesPhase') {
                             addAnomalyLayer(chart1, fullData, flags, flagType);
                             markAnomalies(flags, [], chart2Flags);
                         }
@@ -1933,7 +2095,7 @@
 
                         norm_a_user_25_percentile = getScoreQuantile(flags, globalScores);
                         updateStatsSection2(flags, globalScores, -Infinity);
-                        renderScoreDistributionForUpperChart(scoreBackChart, _scores);
+                        renderScoreDistributionUpperChart(scoreBackChart, _scores);
                         markAnomalies(flags, chart1Flags, chart2Flags);
                         break;
 
@@ -1951,11 +2113,10 @@
 
                         norm_a_user_25_percentile = getScoreQuantile(flags, globalScores);
                         updateStatsSection2(flags, globalScores, -Infinity);
-                        renderScoreDistributionForUpperChart(scoreBackChart, _scores);
+                        renderScoreDistributionUpperChart(scoreBackChart, _scores);
                         markAnomalies(flags, chart1Flags, chart2Flags);
                         break;
                 }
-
 
 
             });
@@ -1993,42 +2154,6 @@
             alert("No more sequential anomalies left");
         }
     });
-
-
-    // mark normal points
-    document.getElementById('markNormalPointsBtn').addEventListener('click', function () {
-        toggleSequentialMode('markNormalPointsBtn', 2, point_dic[2]['color'], point_dic[2]['color'],
-            stackForRevisePossibleMislabeledPointsPhase, [], [0, 1, 2, 3, 4]);
-    });
-
-
-    // cancel marked points
-    document.getElementById('cancelMarkedPointsBtn').addEventListener('click', function () {
-        toggleSequentialMode('cancelMarkedPointsBtn', 0, point_dic[0]['color'], point_dic[0]['color'],
-            stackForRevisePossibleMislabeledPointsPhase, [], [0, 1, 2, 3, 4]
-        );
-    });
-
-    // mark anomalies in revise possible mislabeled points phase
-    document.getElementById('markAnomaliesPointsBtn').addEventListener('click', function () {
-        toggleSequentialMode('markAnomaliesPointsBtn', 1, point_dic[1]['color'], point_dic[1]['color'],
-            stackForRevisePossibleMislabeledPointsPhase, [], [0, 1, 2, 3, 4]
-        );
-    })
-
-
-    // undo: mark normal points, cancel marked points,  mark anomalies in revise possible mislabeled points phase
-    document.getElementById('undoCancelMarkedPointsBtn').addEventListener('click', function () {
-        if (stackForRevisePossibleMislabeledPointsPhase.length > 0) {
-            const lastChanges = stackForRevisePossibleMislabeledPointsPhase.pop();
-            for (const change of lastChanges) {
-                flags[change.index] = change.prevFlag;
-            }
-            norm_a_user_25_percentile = getScoreQuantile(flags, globalScores);
-            updateStatsSection2(flags, globalScores, -Infinity);
-            markAnomalies(flags, [], [0, 1, 2, 3, 4]);
-        }
-    })
 
 
     // after upload the file, then the users should select training sets
@@ -2082,6 +2207,7 @@
         document.getElementById('markAnomaliesTitle').classList.remove('d-none');
         document.getElementById('finshSelectTrainingSet').classList.add("d-none");
         document.getElementById('trainDatasetStats').classList.add('d-none');
+        document.getElementById('revisePotentialMislabeledAnomaliesTitle').classList.add('d-none');
         document.getElementById('trainingSetRecords').innerText =
             brushAreas.reduce((sum, area) => sum + (area.end - area.start + 1), 0);
         document.getElementById('trainingSetRecords1').innerText =
@@ -2169,20 +2295,21 @@
         document.getElementById('revertToSelectTrainingSetBtn').classList.add('d-none');
         document.getElementById('autoDetectSection').classList.add('d-none');
         document.getElementById('showAdvancedStatsSection').classList.remove('d-none');
-        document.getElementById('cancelMarkedPointsSection').classList.remove('d-none');
         document.getElementById('showAdvancedStatistics').classList.remove('d-none');
         document.getElementById('datasetStats3').classList.remove('d-none');
         document.getElementById('datasetStats2').classList.remove('d-none');
         document.getElementById('upperHistogramChart').classList.remove('d-none');
-        clickRangeScale = 2;
+        document.getElementById('showNormalPatternArea').classList.remove('d-none');
+        clickRangeScale = 4;
 
         document.getElementById('autoDetectSection').classList.remove('mt-4');
         cancelSequentialMode();
 
         // Change Instruction Content:
         document.getElementById('markAnomaliesTitle').classList.add('d-none');
-        renameChart2Title('Detailed Data View', 'Use the scrollbar or mouse wheel to navigate');
-        renameChart1Title('Full Data Overview', 'Click on an area in the chart to navigate to that area')
+        renameChart1Title('Full Data Overview', '');
+
+        chart2.getZr().off('contextmenu');
 
     }
 
@@ -2201,13 +2328,14 @@
     }
 
 
+    // utils       ============================ ↓
     // get 95th percentile number of a list
-    function get95thPercentile(scores) {
+    function get95thPercentile(scores, percentage = 0.95) {
         if (!scores.length) return null;
 
         const sorted = [...scores].sort((a, b) => a - b);
 
-        const index = 0.95 * (sorted.length - 1);
+        const index = percentage * (sorted.length - 1);
         const lower = Math.floor(index);
         const upper = Math.ceil(index);
 
@@ -2244,6 +2372,8 @@
         }
     }
 
+    // utils       ============================ ↑
+
 
     // advanced score distribution ============================ ↓
     document.getElementById('showAdvancedStatistics').addEventListener('click', () => {
@@ -2259,58 +2389,57 @@
                 devicePixelRatio: window.devicePixelRatio
             });
 
-            scoreChart.getZr().on('click', function (event) {
-                const pointInGrid = scoreChart.convertFromPixel({gridIndex: 0}, [event.offsetX, event.offsetY]);
-                const binIdx = Math.round(pointInGrid[0]);
-                if (binIdx < 0 || binIdx >= scoreBinCount) return;
+            //scoreChart.getZr().on('click', function (event) {
+            //    const pointInGrid = scoreChart.convertFromPixel({gridIndex: 0}, [event.offsetX, event.offsetY]);
+            //    const binIdx = Math.round(pointInGrid[0]);
+            //    if (binIdx < 0 || binIdx >= scoreBinCount) return;
 
-                // After clicking on the same bin, un-highlight it
-                if (selectedBinIdx === binIdx) {
-                    selectedBinIdx = null;
-                    scoreChart.setOption({graphic: []}, {replaceMerge: ['graphic']});
-                    addAnomalyLayer(chart1, fullData, flags,  3);
-                    findMinMislabeledPointsScoreIndex();
-                    return;
-                }
+            // After clicking on the same bin, un-highlight it
+            //    if (selectedBinIdx === binIdx) {
+            //        selectedBinIdx = null;
+            //       scoreChart.setOption({graphic: []}, {replaceMerge: ['graphic']});
+            //        addAnomalyLayer(chart1, fullData, flags, 3);
+            //        findMinMislabeledPointsScoreIndex();
+            //        return;
+            //    }
 
-                selectedBinIdx = binIdx;
+            //    selectedBinIdx = binIdx;
 
-                const gridModel = scoreChart.getModel().getComponent('grid', 0);
-                const rect = gridModel.coordinateSystem.getRect();
-                const binW = rect.width / scoreBinCount;
+            //    const gridModel = scoreChart.getModel().getComponent('grid', 0);
+            //    const rect = gridModel.coordinateSystem.getRect();
+            //    const binW = rect.width / scoreBinCount;
 
-                const x0 = rect.x + binIdx * binW;
-                const y0 = rect.y;
-                const w = binW;
-                const h = rect.height;
+            //    const x0 = rect.x + binIdx * binW;
+            //    const y0 = rect.y;
+            //    const w = binW;
+            //    const h = rect.height;
 
-                scoreChart.setOption({
-                    graphic: [{
-                        type: 'rect',
-                        z: 100,
-                        shape: {x: x0, y: y0, width: w, height: h},
-                        style: {fill: 'rgba(123, 31, 162, 0.6)'}
-                    }]
-                });
-
-
-                const temp = Array.from({length: flags.length}, () => 0);
-
-                for (let i = 0; i < flags.length; i++) {
-                    if (!isInBrushAreas(i)) continue;
-                    const idx = Math.min(Math.floor((globalScores[i] - scoreMin) / scoreBinSize), scoreBinCount - 1);
-                    if (idx === binIdx && (flags[i] === 4 || flags[i] === 0)) {
-                        temp[i] = 5;
-                    }
-                }
-
-                const count1 = temp.filter(value => value === 5).length;
-                console.log('Temp: ', count1);
-
-                addAnomalyLayer(chart1, fullData, temp, 5);
+            //    scoreChart.setOption({
+            //        graphic: [{
+            //            type: 'rect',
+            //            z: 100,
+            //            shape: {x: x0, y: y0, width: w, height: h},
+            //            style: {fill: 'rgba(123, 31, 162, 0.6)'}
+            //        }]
+            //    });
 
 
-            });
+            //    const temp = Array.from({length: flags.length}, () => 0);
+
+            //    for (let i = 0; i < flags.length; i++) {
+            //        if (!isInBrushAreas(i)) continue;
+            //        const idx = Math.min(Math.floor((globalScores[i] - scoreMin) / scoreBinSize), scoreBinCount - 1);
+            //        if (idx === binIdx && (flags[i] === 4 || flags[i] === 0)) {
+            //            temp[i] = 5;
+            //        }
+            //    }
+
+            //    const count1 = temp.filter(value => value === 5).length;
+
+            //    addAnomalyLayer(chart1, fullData, temp, 5);
+
+
+            //});
 
 
         } else {
@@ -2325,8 +2454,8 @@
         isScoreModalOpen = false;
         document.body.classList.remove('modal-open');
         document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
-        markAnomalies(flags, [], [0, 1, 2, 3, 4]);
-        // renderScoreDistributionForUpperChart(scoreBackChart, _scores);
+        // markAnomalies(flags, [], [0, 1, 2, 3, 4]);
+        renderScoreDistributionUpperChart(scoreBackChart, _scores);
     });
 
     // show modal
@@ -2446,7 +2575,7 @@
                 text: 'NormA Score Distribution (←/→ to change threshold)',
                 left: 'center'
             },
-            dataZoom:{
+            dataZoom: {
                 type: 'inside',
             },
             tooltip: {
@@ -2463,7 +2592,7 @@
                 data: binLabels,
                 name: '  NormA Score',
                 axisLabel: {
-                    interval: Math.ceil(scoreBinCount/ 50),
+                    interval: Math.ceil(scoreBinCount / 50),
                     rotate: 45
                 }
             },
@@ -2580,14 +2709,12 @@
                     }
                 }
             }
-
-
         }
     }
 
 
     // Update threshold for Histogram bins (round off cause inconsistency)
-    function updateThresholdForHistogramBins(){
+    function updateThresholdForHistogramBins() {
         const binCount = scoreBinCount;
 
         globalScores.forEach((score, i) => {
@@ -2657,13 +2784,12 @@
                 scoreBackChart.resize();
             }
 
-            //renderScoreDistributionForUpperChart(scoreBackChart, _scores);
-            renderNormPatternLineChart(scoreBackChart);
+            renderScoreDistributionUpperChart(scoreBackChart, _scores);
         }, 500);
     }
 
     // update and render upper histogram
-    function renderScoreDistributionForUpperChart(chart, scores) {
+    function renderScoreDistributionUpperChart(chart, scores) {
         const binCount = scoreBinCount;
         let min = Infinity, max = -Infinity;
         scores.forEach((score, i) => {
@@ -2678,11 +2804,11 @@
         scoreMin = min;
         scoreBinSize = binSize;
 
-        if (thresholdIndex === null) {
-            thresholdIndex = Math.round((norm_a_threshold - min) / binSize);
-            thresholdIndex = Math.min(Math.max(0, thresholdIndex), binCount - 1);
-            norm_a_threshold = min + thresholdIndex * binSize;
-        }
+
+        thresholdIndex = Math.round((norm_a_threshold - min) / binSize);
+        thresholdIndex = Math.min(Math.max(0, thresholdIndex), binCount - 1);
+        norm_a_threshold = min + thresholdIndex * binSize;
+
 
         const binsFlag0 = new Array(binCount).fill(0); // flags[i] === 0
         const binsFlag1 = new Array(binCount).fill(0); // flags[i] === 1
@@ -2824,61 +2950,68 @@
     }
 
 
-    function renderNormPatternLineChart(chart) {
-    if (!norm_a_norm_patterns || !norm_a_norm_patterns.length || !norm_a_weights || !norm_a_weights.length) {
-        console.warn("No patterns or weights available.");
-        return;
-    }
-
-    // 找到权重最大的那个 pattern
-    let maxWeightIndex = 0;
-    for (let i = 1; i < norm_a_weights.length; i++) {
-        if (norm_a_weights[i] > norm_a_weights[maxWeightIndex]) {
-            maxWeightIndex = i;
+    // init norm pattern chart
+    function initNormPatternChart() {
+        if (!norm_a_normal_pattern_chart) {
+            norm_a_normal_pattern_chart = echarts.init(normal_pattern_chart_backDom, null, {
+                renderer: 'canvas',
+                devicePixelRatio: window.devicePixelRatio
+            });
+        } else {
+            norm_a_normal_pattern_chart.resize();
         }
+
     }
 
-    const pattern = norm_a_norm_patterns[maxWeightIndex];
-    const xLabels = Array.from({length: pattern.length}, (_, i) => i);
+    // update and render norm chart
+    function renderNormalPatternChart(chart, normalPattern) {
+        const xData = normalPattern.map((_, i) => i);
 
-    console.log(norm_a_weights)
-
-    const option = {
-        title: {text: `Normal Pattern`},
-        tooltip: {
-            trigger: 'axis'
-        },
-        xAxis: {
-            type: 'category',
-            data: xLabels,
-            axisLabel: {
-                interval: Math.ceil(pattern.length / 25),
-                rotate: 45
-            }
-        },
-        yAxis: {
-            type: 'value'
-        },
-        series: [
-            {
-                name: 'Pattern Curve',
-                type: 'line',
-                smooth: true,
-                data: pattern,
-                lineStyle: {
-                    width: 2
-                },
-                itemStyle: {
-                    color: 'rgba(100, 149, 237, 1)'
+        let option = {
+            title: {
+                text: "Similar Normal Pattern"
+            },
+            xAxis: {type: "category", data: xData, name: "index"},
+            yAxis: {type: "value", name: "Value"},
+            dataZoom: [{type: "inside"},],
+            tooltip: {
+                trigger: "axis",
+                formatter: params => {
+                    const p = params[0];
+                    const value = (typeof p.value === 'number') ? p.value.toFixed(3) : p.value;
+                    return `Index: ${p.dataIndex}<br/>Value: ${value}`;
                 }
-            }
-        ]
-    };
+            },
+            grid: {
+                left: '2%',
+                right: '10%',
+                top: '17%',
+                bottom: '2%',
+                containLabel: true
+            },
+            series: [
+                {
+                    type: "line",
+                    data: normalPattern,
+                    smooth: true,
+                    showAllSymbol: true,
+                    itemStyle: {
+                        color: params => {
+                            const idx = params.dataIndex;
+                            const f = (flags[idx] != null ? flags[idx] : 0);
+                            return point_dic[f].color;
+                        }
+                    }
+                },
+            ],
+            emphasis: {
+                disabled: true
+            },
+        }
 
-    chart.setOption(option);
-}
+        chart.setOption(option);
 
-
+    }
 
 </script>
 
