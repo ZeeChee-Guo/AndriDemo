@@ -419,9 +419,9 @@
                 <div class="mb-3">
                     <label for="algorithmSelect" class="form-label">Select Algorithm</label>
                     <select class="form-select" id="algorithmSelect">
-                        <option value="NormA" selected>NormA</option>
-                        <option value="SAND">SAND</option>
-                        <option value="DUMP">DUMP</option>
+                        <option value="0" selected>NormA</option>
+                        <option value="1">SAND</option>
+                        <option value="2">DAMP</option>
                     </select>
                 </div>
 
@@ -439,9 +439,8 @@
                 </div>
 
                 <!-- Description Text -->
-                <p class="mb-2 text-center">The model automatically tunes hyperparameters based on your labeled
-                    anomalies, and this approach is recommended.</p>
-
+                <p class="mb-2 text-center">The model automatically find other anomalies based on your labeled
+                    anomalies.</p>
                 <!-- Auto-Tune Button at Bottom -->
                 <div class="text-center mt-3">
                     <button id="optimizeHyperparametersBtn" class="btn btn-success">Auto Detect</button>
@@ -474,7 +473,7 @@
     <div class="modal-dialog modal-xxl modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header d-flex flex-wrap justify-content-between align-items-center">
-                <h5 class="modal-title me-3" id="scoreDistributionModalLabel">NormA Score Distribution</h5>
+                <h5 class="modal-title me-3" id="scoreDistributionModalLabel">Anomaly Score Distribution</h5>
                 <div class="d-flex flex-wrap gap-3 small">
                     <div>
                         <strong>Total Data:</strong> <span class="text-success" id="totalRecords1">0</span>
@@ -500,16 +499,31 @@
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="normaEvaluationModalLabel">Evaluation Metrics</h5>
+                <h5 class="modal-title" id="evaluationModalLabel">Evaluation</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-
             <div class="modal-body">
-                <p class="text-center text-muted mb-3">Evaluation results based on detected vs ground truth
-                    anomalies:</p>
 
-                <div class="table-responsive">
-                    <table class="table table-bordered text-center align-middle">
+                <!-- 提示和输入部分 -->
+                <div id="confidenceSection">
+                    <p class="text-center text-muted mb-4">
+                        The distribution of marked points has stabilized. Please provide your confidence level (0-1)
+                        regarding the points you have marked.
+                    </p>
+                    <div class="mb-3 d-flex justify-content-center">
+                        <input type="number" step="0.01" min="0" max="1" class="form-control w-25 text-center"
+                               id="confidenceInput" placeholder="Your Confidence">
+                    </div>
+                    <hr>
+                    <div class="d-flex justify-content-center">
+                        <button type="button" class="btn btn-primary" id="calculateThresholdBtn">
+                            Calculate Threshold And Test
+                        </button>
+                    </div>
+                </div>
+
+                <div id="evaluationTableSection" class="table-responsive d-none">
+                    <table class="table table-bordered text-center align-middle mb-0">
                         <thead class="table-light">
                         <tr>
                             <th></th>
@@ -517,29 +531,24 @@
                             <th>Recall</th>
                             <th>F1 Score</th>
                             <th>Accuracy</th>
+                            <th>Threshold Value</th>
                         </tr>
                         </thead>
                         <tbody>
                         <tr>
-                            <td>NormA</td>
-                            <td><span class="badge bg-primary rounded-pill" id="normAPrecisionScore">-</span></td>
-                            <td><span class="badge bg-success rounded-pill" id="normARecallScore">-</span></td>
-                            <td><span class="badge bg-warning rounded-pill text-dark" id="normAf1Score">-</span></td>
-                            <td><span class="badge bg-info rounded-pill text-dark" id="normAAccuracyScore">-</span></td>
+                            <td id="alogorithmName">NormA</td>
+                            <td><span id="normAPrecisionScore">-</span></td>
+                            <td><span id="normARecallScore">-</span></td>
+                            <td><span id="normAf1Score">-</span></td>
+                            <td><span id="normAAccuracyScore">-</span></td>
+                            <td><span id="finalThreshold">-</span></td>
+
                         </tr>
-                        <!--  -->
-                        <!-- <tr>
-                            <td>SAND</td>
-                            <td><span class="badge bg-primary rounded-pill" id="sandPrecisionScore">-</span></td>
-                            <td><span class="badge bg-success rounded-pill" id="sandRecallScore">-</span></td>
-                            <td><span class="badge bg-warning rounded-pill text-dark" id="sandF1Score">-</span></td>
-                            <td><span class="badge bg-info rounded-pill text-dark" id="sandAccuracyScore">-</span></td>
-                        </tr> -->
                         </tbody>
                     </table>
                 </div>
-            </div>
 
+            </div>
         </div>
     </div>
 </div>
@@ -568,6 +577,15 @@
         4: {'size': 12, 'symbol': 'triangle', 'color': 'rgba(255, 182, 193, 1)'},
         5: {'size': 12, 'symbol': 'circle', 'color': 'rgba(123, 31, 162, 1)'},
     }
+
+
+    // 0: NormA, 1: SAND, 2: DAMP, 3: Andri
+    const algorithms_dict = {
+        0: {'detect_url': "{{ url_for('detect_anomalies.norm_a') }}", 'name': 'NormA'},
+        1: {'detect_url': "{{ url_for('detect_anomalies.sand') }}", 'name': 'SAND'},
+        2: {'detect_url': "{{ url_for('detect_anomalies.damp') }}", 'name': 'DAMP'},
+        3: {'detect_url': "{{ url_for('detect_anomalies.sand') }}", 'name': 'Andri'},
+    };
 
 
     let chart1, chart2;
@@ -622,6 +640,13 @@
     let flags_for_marking_more_labels = [];
     let retained_points = [];
     let process_step = 0;
+
+
+    // global variables
+    let final_mu = 0;
+    let final_sigma = 0;
+    let currentAlgorithmName = 'NormA';
+
 
     function initCharts() {
         chart1 = echarts.init(document.getElementById("chart1"));
@@ -895,6 +920,14 @@
                 break;
 
             case 4:
+                start = Math.max(0, index - 0.5 * norm_a_l);
+                end = Math.min(fullData.length - 1, 0.5 * norm_a_l);
+
+                chart2.dispatchAction({
+                    type: "dataZoom",
+                    startValue: start,
+                    endValue: end,
+                });
                 break;
         }
 
@@ -1538,6 +1571,19 @@
         //    return;
         //}
 
+        let patternLength = -1;
+        const autoDetectCheckbox = document.getElementById('autoDetectPatternLength');
+        if (autoDetectCheckbox.checked) {
+            patternLength = -1;
+        } else {
+            const value = document.getElementById('patternLengthInput').value;
+            if (value === '') {
+                patternLength = -1;
+            } else {
+                patternLength = value;
+            }
+        }
+
         const currentModal = bootstrap.Modal.getInstance(document.getElementById('autoDetectAnomaliesModal'));
         currentModal.hide();
 
@@ -1558,13 +1604,16 @@
             }
         }, 7000);
 
-        const url = "{{ url_for('detect_anomalies.sand') }}";
+        const algoSelect = document.getElementById('algorithmSelect').value;
+        const url = algorithms_dict[algoSelect]['detect_url'];
+        currentAlgorithmName = algorithms_dict[algoSelect]['name'];
+
         const body = {
             hyperparameters: 0,
             data: fullData,
             flags: flags,
             areas: brushAreas,
-            pattern_length: -1
+            pattern_length: patternLength,
         };
 
         fetch(url, {
@@ -1594,7 +1643,7 @@
                     norm_a_l = data.pattern_length;
                     flags = data.flags;
                     globalScores = data.global_scores;
-                    norm_a_trainingset_mu = getMu();
+                    norm_a_trainingset_mu = getTopPercentileValue(10);
                     norm_a_normal_patterns = data.nms;
                     norm_a_weights = data.weights;
                     clickRangeScale = 4;
@@ -1677,7 +1726,6 @@
 
     // fit user labels
     function fitUserLabels() {
-        console.log(brushAreas);
         const url = "{{ url_for('detect_anomalies.norm_a_fit_user_labels') }}";
 
         const body = {
@@ -1705,7 +1753,10 @@
             .then(data => {
                 const stable = data.stable;
                 if (stable === 1) {
-                    alert('stop');
+                    document.getElementById('finalTestBtn').click();
+                    final_mu = data.mu;
+                    final_sigma = data.sigma;
+
                 } else {
                     norm_a_intersect = data.intersect;
                     switch (process_step) {
@@ -1713,7 +1764,7 @@
                             isPossibleMislabledPointsExist(norm_a_trainingset_mu);
                             break
                         case 1:
-                            findNormalPointsClosestToIntersectionIndex1(norm_a_intersect);
+                            findNormalPointsClosestToIntersectionIndex(norm_a_intersect, norm_a_intersect[0]);
                             break
 
                     }
@@ -1723,58 +1774,24 @@
 
             });
     }
-     function findNormalPointsClosestToIntersectionIndex1(l) {
+
+
+    function findNormalPointsClosestToIntersectionIndex(l, minIndex) {
         l.forEach(idx => {
-        flags_for_marking_more_labels[idx] = 4;
-    });
-
-        markAnomalies(flags_for_marking_more_labels, [], [4]);
-        addAnomalyLayer(chart1, fullData, flags_for_marking_more_labels, 4);
-    }
-
-
-    // zoom in to lowest mislabeled points and show mislabeled points
-    function findNormalPointsClosestToIntersectionIndex(intersect) {
-        let minIndex = -1;
-        let minDist = Infinity;
-
-        for (let i = 0; i < flags.length; i++) {
-            if (retained_points.includes(i)) continue;
-            if (!isInBrushAreas(i)) continue;
-            if (flags[i] === 0) {
-                let dist = Math.abs(globalScores[i] - intersect);
-                if (dist < minDist) {
-                    minDist = dist;
-                    minIndex = i;
-                }
-            }
-        }
-
-        if (minIndex === -1) {
-            alert('No more');
-        }
-
+            flags_for_marking_more_labels[idx] = 4;
+        });
 
         const zoomRange = Math.round(1.5 * norm_a_l);
 
         const min_bound = Math.floor(Math.max(0, minIndex - 0.5 * norm_a_l));
         const max_bound = Math.ceil(Math.min(flags.length - 1, minIndex + 0.5 * norm_a_l));
 
-
-        flags_for_marking_more_labels = flags.map((flag, idx) => {
-            if (flag === 0 && Math.abs(globalScores[idx] - intersect) <= 0.006 && isInBrushAreas(idx)) {
-                return 4;
-            } else {
-                return 0;
-            }
-        });
-
-
         chart2.dispatchAction({
             type: "dataZoom",
             startValue: Math.max(0, minIndex - zoomRange),
             endValue: Math.min(fullData.length - 1, minIndex + zoomRange)
         });
+
 
         markAnomalies(flags_for_marking_more_labels, [], [4]);
         addAnomalyLayer(chart1, fullData, flags_for_marking_more_labels, 4);
@@ -2334,7 +2351,7 @@
 
         const option = {
             title: {
-                text: 'NormA Score Distribution (←/→ to change threshold)',
+                text: 'Anomaly Score Distribution (←/→ to change threshold)',
                 left: 'center'
             },
             dataZoom: {
@@ -2352,7 +2369,7 @@
             xAxis: {
                 type: 'category',
                 data: binLabels,
-                name: 'NormA Score',
+                name: 'Anomaly Score',
                 nameLocation: 'middle',
                 nameGap: 40,
                 nameTextStyle: {
@@ -2444,23 +2461,15 @@
 
     // Show Pattern Length section only when 'NormA' is selected and toggle input based on auto-detect switch
     document.addEventListener('DOMContentLoaded', () => {
-        const algoSelect = document.getElementById('algorithmSelect');
-        const patternSection = document.getElementById('patternLengthSection');
         const autoDetectCheckbox = document.getElementById('autoDetectPatternLength');
         const patternInput = document.getElementById('patternLengthInput');
+        const patternSection = document.getElementById('patternLengthSection');
 
-        // Toggle pattern input enabled/disabled based on auto-detect checkbox
+        patternSection.style.display = 'block';
+
         autoDetectCheckbox.addEventListener('change', () => {
             patternInput.disabled = autoDetectCheckbox.checked;
         });
-
-        // Show/hide pattern length section based on selected algorithm
-        algoSelect.addEventListener('change', () => {
-            patternSection.style.display = algoSelect.value === 'NormA' ? 'block' : 'none';
-        });
-
-        // Initialize display (in case it's reloaded dynamically)
-        patternSection.style.display = algoSelect.value === 'NormA' ? 'block' : 'none';
     });
 
 
@@ -2507,41 +2516,6 @@
             norm_a_threshold = histogramMin + thresholdIndex * binSize;
         }
     }
-
-
-    // evaluation
-    document.getElementById('finalTestBtn').addEventListener('click', function () {
-        const threshold = norm_a_user_label_mius[0] - norm_a_user_label_sigmas[0];
-        const scores = globalScores;
-        const groundTruth = baseline;
-
-        let TP = 0, FP = 0, TN = 0, FN = 0;
-
-        for (let i = 0; i < groundTruth.length; i++) {
-            if (isInBrushAreas(i)) continue;
-
-            const score = scores[i];
-            const predicted = score >= threshold ? 1 : 0;
-            const actual = groundTruth[i];
-
-
-            if (actual === 1 && predicted === 1) TP++;
-            else if (actual === 0 && predicted === 1) FP++;
-            else if (actual === 0 && predicted === 0) TN++;
-            else if (actual === 1 && predicted === 0) FN++;
-        }
-
-
-        const precision = TP + FP === 0 ? 0 : TP / (TP + FP);
-        const recall = TP + FN === 0 ? 0 : TP / (TP + FN);
-        const f1 = (precision + recall === 0) ? 0 : 2 * precision * recall / (precision + recall);
-        const accuracy = (TP + TN + FP + FN === 0) ? 0 : (TP + TN) / (TP + TN + FP + FN);
-
-        document.getElementById('normAPrecisionScore').textContent = precision.toFixed(3);
-        document.getElementById('normARecallScore').textContent = recall.toFixed(3);
-        document.getElementById('normAf1Score').textContent = f1.toFixed(3);
-        document.getElementById('normAAccuracyScore').textContent = accuracy.toFixed(3);
-    });
 
 
     // init upper histogram chart
@@ -2762,6 +2736,32 @@
             : 0;
     }
 
+    function getSigma(mean) {
+        const brushScores = globalScores.filter((_, i) => isInBrushAreas(i));
+        const n = brushScores.length;
+        if (n === 0) return 0;
+
+        const variance = brushScores.reduce((sum, val) => sum + (val - mean) ** 2, 0) / n;
+        return Math.sqrt(variance);
+    }
+
+
+    // When percentile=20, return the "largest top 20% percentile value" (i.e., the 80th percentile).
+    function getTopPercentileValue(percentile) {
+        percentile = Math.max(0, Math.min(100, percentile));
+        const brushScores = globalScores.filter((_, i) => isInBrushAreas(i));
+        if (brushScores.length === 0) return 0;
+
+        const sorted = brushScores.slice().sort((a, b) => b - a);
+
+        const truePercentile = percentile;
+        const pos = (truePercentile / 100) * (sorted.length - 1);
+        const lower = Math.floor(pos);
+        const upper = Math.ceil(pos);
+        if (lower === upper) return sorted[lower];
+        return sorted[lower] + (sorted[upper] - sorted[lower]) * (pos - lower);
+    }
+
 
     function findSimilarNormalPatterns(startIndex, endIndex) {
         const url = "{{ url_for('detect_anomalies.find_similar_pattern') }}";
@@ -2798,6 +2798,68 @@
     }
 
     // utils ============================ ↑
+
+
+    // final test
+    document.getElementById('calculateThresholdBtn').onclick = function () {
+        document.getElementById('confidenceSection').classList.add('d-none');
+        document.getElementById('evaluationTableSection').classList.remove('d-none');
+    };
+
+    document.getElementById('calculateThresholdBtn').addEventListener('click', function () {
+        evaluate();
+    });
+
+
+    function evaluate() {
+        const alpha = document.getElementById('confidenceInput').value;
+        const training_set_miu = getMu();
+        const trainiing_set_sigma = getSigma(training_set_miu);
+
+        console.log(alpha);
+        console.log(final_mu);
+        console.log(final_sigma);
+        console.log(training_set_miu);
+        console.log(trainiing_set_sigma);
+        const threshold = alpha * (final_mu - final_sigma) + (1 - alpha) * Math.min(1,
+            training_set_miu + 3*trainiing_set_sigma);
+        const scores = globalScores;
+        const groundTruth = baseline;
+
+        console.log(threshold);
+
+        let TP = 0, FP = 0, TN = 0, FN = 0;
+
+        for (let i = 0; i < groundTruth.length; i++) {
+            if (isInBrushAreas(i)) continue;
+
+            const score = scores[i];
+            const predicted = score >= threshold ? 1 : 0;
+            const actual = groundTruth[i];
+
+
+            if (actual === 1 && predicted === 1) TP++;
+            else if (actual === 0 && predicted === 1) FP++;
+            else if (actual === 0 && predicted === 0) TN++;
+            else if (actual === 1 && predicted === 0) FN++;
+        }
+
+
+        const precision = TP + FP === 0 ? 0 : TP / (TP + FP);
+        const recall = TP + FN === 0 ? 0 : TP / (TP + FN);
+        const f1 = (precision + recall === 0) ? 0 : 2 * precision * recall / (precision + recall);
+        const accuracy = (TP + TN + FP + FN === 0) ? 0 : (TP + TN) / (TP + TN + FP + FN);
+
+        
+        document.getElementById('alogorithmName').textContent = currentAlgorithmName;
+        document.getElementById('normAPrecisionScore').textContent = precision.toFixed(3);
+        document.getElementById('normARecallScore').textContent = recall.toFixed(3);
+        document.getElementById('normAf1Score').textContent = f1.toFixed(3);
+        document.getElementById('normAAccuracyScore').textContent = accuracy.toFixed(3);
+        document.getElementById('finalThreshold').textContent = threshold.toFixed(3);
+
+    }
+
 
 </script>
 

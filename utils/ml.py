@@ -7,6 +7,7 @@ from sklearn.mixture import BayesianGaussianMixture
 import warnings
 import pandas as pd
 from external.a2d2.util.TSB_AD.models.norma import NORMA
+from TSB_UAD.models.damp import DAMP
 from external.a2d2.util.util_a2d2 import find_length
 from TSB_UAD.models.sand import SAND
 from TSB_UAD.utils.slidingWindows import find_length as find_sand_length
@@ -15,23 +16,188 @@ memory = Memory(location="./norma_cache", verbose=0)
 
 
 @memory.cache
-def compute_global_scores(data_arr, pattern_length=None):
+def compute_global_scores(data_arr, training_set, pattern_length=None):
+    """
+    NormA
+    :param data_arr:
+    :param training_set:
+    :param pattern_length:
+    :return:
+    """
     if pattern_length is None:
         pattern_length = find_length(data_arr)
 
-    clf_global = NORMA(
+    merged_intervals = merge_intervals(training_set)
+    train_indices = []
+    for interval in merged_intervals:
+        train_indices.extend(range(interval['start'], interval['end'] + 1))
+    train_indices = np.array(sorted(set(train_indices)), dtype=int)
+
+    all_indices = np.arange(len(data_arr))
+    test_indices = np.setdiff1d(all_indices, train_indices)
+
+    train_data = data_arr[train_indices]
+    clf_train = NORMA(
         pattern_length=pattern_length,
         nm_size=3 * pattern_length,
         percentage_sel=1,
         normalize='z-norm'
     )
-    clf_global.fit(data_arr)
-    global_scores = np.array(clf_global.decision_scores_)
-    global_scores = MinMaxScaler(feature_range=(0, 1)).fit_transform(global_scores.reshape(-1, 1)).ravel()
-    pad = (pattern_length - 1) // 2
-    padded_scores = np.array([global_scores[0]] * pad + list(global_scores) + [global_scores[-1]] * pad)
+    clf_train.fit(train_data)
+    raw_scores_train = clf_train.decision_scores_
 
-    return pattern_length, padded_scores, clf_global.normalmodel[0], clf_global.normalmodel[1]
+    pad = (pattern_length - 1) // 2
+    if raw_scores_train.size > 0:
+        norm_scores_train = MinMaxScaler(feature_range=(0, 1)) \
+            .fit_transform(raw_scores_train.reshape(-1, 1)) \
+            .ravel()
+        left_pad_train = np.full(pad, norm_scores_train[0])
+        right_pad_train = np.full(pad, norm_scores_train[-1])
+        padded_scores_train = np.concatenate([left_pad_train, norm_scores_train, right_pad_train])
+    else:
+        padded_scores_train = np.zeros(len(train_data))
+
+    if test_indices.size > 0:
+        test_data = data_arr[test_indices]
+        clf_test = NORMA(
+            pattern_length=pattern_length,
+            nm_size=3 * pattern_length,
+            percentage_sel=1,
+            normalize='z-norm'
+        )
+        clf_test.fit(test_data)
+        raw_scores_test = clf_test.decision_scores_
+
+        if raw_scores_test.size > 0:
+            norm_scores_test = MinMaxScaler(feature_range=(0, 1)) \
+                .fit_transform(raw_scores_test.reshape(-1, 1)) \
+                .ravel()
+            left_pad_test = np.full(pad, norm_scores_test[0])
+            right_pad_test = np.full(pad, norm_scores_test[-1])
+            padded_scores_test = np.concatenate([left_pad_test, norm_scores_test, right_pad_test])
+        else:
+            padded_scores_test = np.zeros(len(test_data))
+    else:
+        padded_scores_test = np.array([])
+
+    scores_full = np.zeros(len(data_arr))
+    if train_indices.size > 0:
+        assert padded_scores_train.shape[0] == train_indices.shape[0]
+        scores_full[train_indices] = padded_scores_train
+
+    if test_indices.size > 0:
+        assert padded_scores_test.shape[0] == test_indices.shape[0]
+        scores_full[test_indices] = padded_scores_test
+
+    return pattern_length, scores_full, clf_train.normalmodel[0], clf_train.normalmodel[1]
+
+
+@memory.cache
+def compute_training_set_sand_scores(data_arr, training_set, slidingWindow=None):
+    if slidingWindow is None:
+        slidingWindow = find_sand_length(data_arr)
+    merged_intervals = merge_intervals(training_set)
+    train_indices = []
+    for interval in merged_intervals:
+        train_indices.extend(range(interval['start'], interval['end'] + 1))
+    train_indices = np.array(sorted(set(train_indices)), dtype=int)
+    test_indices = np.setdiff1d(np.arange(len(data_arr)), train_indices)
+
+    train_data = data_arr[train_indices]
+    clf_train = SAND(
+        pattern_length=slidingWindow,
+        subsequence_length=4 * slidingWindow,
+    )
+    clf_train.fit(train_data, overlaping_rate=int(1.5 * slidingWindow))
+    scores_train = MinMaxScaler(feature_range=(0, 1)).fit_transform(clf_train.decision_scores_.reshape(-1, 1)).ravel()
+
+    if len(test_indices) > 0:
+        test_data = data_arr[test_indices]
+        clf_test = SAND(
+            pattern_length=slidingWindow,
+            subsequence_length=4 * slidingWindow,
+        )
+        clf_test.fit(test_data, overlaping_rate=int(1.5 * slidingWindow))
+        scores_test = MinMaxScaler(feature_range=(0, 1)).fit_transform(clf_test.decision_scores_.reshape(-1, 1)).ravel()
+    else:
+        scores_test = np.array([])
+
+    scores_full = np.zeros(len(data_arr))
+    scores_full[train_indices] = scores_train
+    if len(test_indices) > 0:
+        scores_full[test_indices] = scores_test
+
+    return slidingWindow, scores_full, [c[0] for c in clf_train.clusters], clf_train.weights
+
+
+@memory.cache
+def compute_training_set_damp_scores(data_arr, training_set, slidingWindow=None):
+    """
+    DAMP
+    :param data_arr:
+    :param training_set:
+    :param slidingWindow:
+    :return:
+    """
+    if slidingWindow is None:
+        slidingWindow = find_sand_length(data_arr)
+
+    merged_intervals = merge_intervals(training_set)
+    train_indices = []
+    for interval in merged_intervals:
+        train_indices.extend(range(interval['start'], interval['end'] + 1))
+    train_indices = np.array(sorted(set(train_indices)), dtype=int)
+
+    all_indices = np.arange(len(data_arr))
+    test_indices = np.setdiff1d(all_indices, train_indices)
+
+    train_data = data_arr[train_indices]
+    clf_train = DAMP(m=slidingWindow, sp_index=slidingWindow + 1)
+    clf_train.fit(train_data)
+    raw_scores_train = clf_train.decision_scores_
+
+    pad = (slidingWindow - 1) // 2
+    if raw_scores_train.size > 0:
+        damp_scores_train = MinMaxScaler(feature_range=(0, 1)) \
+            .fit_transform(raw_scores_train.reshape(-1, 1)) \
+            .ravel()
+        left_pad_train = np.full(pad, damp_scores_train[0])
+        right_pad_train = np.full(pad, damp_scores_train[-1])
+        padded_scores_train = np.concatenate([left_pad_train, damp_scores_train, right_pad_train])
+    else:
+        padded_scores_train = np.zeros(len(train_data))
+
+    motif_start = raw_scores_train[slidingWindow + 1:].argmin()
+    motif = raw_scores_train[motif_start: motif_start + slidingWindow]
+
+    if test_indices.size > 0:
+        test_data = data_arr[test_indices]
+        clf_test = DAMP(m=slidingWindow, sp_index=slidingWindow + 1)
+        clf_test.fit(test_data)
+        raw_scores_test = clf_test.decision_scores_
+
+        if raw_scores_train.size > 0:
+            damp_scores_test = MinMaxScaler(feature_range=(0, 1)) \
+                .fit_transform(raw_scores_test.reshape(-1, 1)) \
+                .ravel()
+            left_pad_test = np.full(pad, damp_scores_test[0])
+            right_pad_test = np.full(pad, damp_scores_test[-1])
+            padded_scores_test = np.concatenate([left_pad_test, damp_scores_test, right_pad_test])
+        else:
+            padded_scores_test = np.zeros(len(test_data))
+    else:
+        padded_scores_test = np.array([])
+
+    scores_full = np.zeros(len(data_arr))
+    if train_indices.size > 0:
+        assert padded_scores_train.shape[0] == train_indices.shape[0]
+        scores_full[train_indices] = padded_scores_train
+
+    if test_indices.size > 0:
+        assert padded_scores_test.shape[0] == test_indices.shape[0]
+        scores_full[test_indices] = padded_scores_test
+
+    return slidingWindow, scores_full, [motif.tolist()], [1]
 
 
 def merge_intervals(intervals):
@@ -48,35 +214,6 @@ def merge_intervals(intervals):
     return merged
 
 
-@memory.cache
-def compute_training_set_sand_scores(data_arr, training_set, slidingWindow=None):
-    if slidingWindow is None:
-        slidingWindow = find_sand_length(data_arr)
-    merged_intervals = merge_intervals(training_set)
-    train_indices = []
-    for interval in merged_intervals:
-        train_indices.extend(range(interval['start'], interval['end'] + 1))
-    train_indices = np.array(sorted(set(train_indices)), dtype=int)
-    train_data = data_arr[train_indices]
-
-    clf = SAND(
-        pattern_length=slidingWindow,
-        subsequence_length=4 * slidingWindow,
-    )
-    clf.fit(train_data, overlaping_rate=int(1.5 * slidingWindow))
-    scores = clf.decision_scores_
-    scores = MinMaxScaler(feature_range=(0, 1)).fit_transform(scores.reshape(-1, 1)).ravel()
-    scores_full = np.zeros(len(data_arr))
-    scores_full[train_indices] = scores
-
-    print(len(scores_full))
-    return slidingWindow, scores_full, [c[0] for c in clf.clusters], clf.weights
-
-
-def compute_training_set_damp_scores():
-    pass
-
-
 def sand_scoring(data, flags, training_set, pattern_length=None):
     warnings.simplefilter("ignore", pd.errors.PerformanceWarning)
     flags = np.array(flags)
@@ -90,7 +227,6 @@ def sand_scoring(data, flags, training_set, pattern_length=None):
     nms = [np.array(nm).tolist() for nm in nms]
     weights = list(np.array(weights).flatten())
 
-
     return {
         'global_scores': list(global_scores),
         'pattern_length': int(pattern_length),
@@ -100,13 +236,13 @@ def sand_scoring(data, flags, training_set, pattern_length=None):
     }
 
 
-def norm_a_scoring(data, flags, pattern_length=None):
+def norm_a_scoring(data, flags, training_set, pattern_length=None):
     warnings.simplefilter("ignore", pd.errors.PerformanceWarning)
     flags = np.array(flags)
     flags[np.isin(flags, [1, 3])] = 1
 
     data_arr = np.array(data, dtype=float).flatten()
-    pattern_length, global_scores, nms, weights = compute_global_scores(data_arr, pattern_length=pattern_length)
+    pattern_length, global_scores, nms, weights = compute_global_scores(data_arr, training_set, pattern_length)
 
     return {
         'global_scores': list(global_scores),
@@ -117,23 +253,22 @@ def norm_a_scoring(data, flags, pattern_length=None):
     }
 
 
-# def damp_scoring(data, flags, pattern_length=None):
-#     warnings.simplefilter("ignore", pd.errors.PerformanceWarning)
-#     flags = np.array(flags)
-#     flags[np.isin(flags, [1, 3])] = 1
-#
-#     data_arr = np.array(data, dtype=float).flatten()
-#     pattern_length, global_scores, nms, weights = compute_global_scores(data_arr, pattern_length=pattern_length)
-#
-#     # miu_list, sigma_list = fit_user_labels(global_scores, flags)
-#
-#     return {
-#         'global_scores': list(global_scores),
-#         'pattern_length': int(pattern_length),
-#         'flags': list(map(int, flags)),
-#         'nms': nms,
-#         'weights': weights,
-#     }
+def damp_scoring(data, flags, training_set, pattern_length=None):
+    warnings.simplefilter("ignore", pd.errors.PerformanceWarning)
+    flags = np.array(flags)
+    flags[np.isin(flags, [1, 3])] = 1
+
+    data_arr = np.array(data, dtype=float).flatten()
+    pattern_length, global_scores, nms, weights = compute_training_set_damp_scores(data_arr, training_set,
+                                                                                   pattern_length)
+
+    return {
+        'global_scores': list(global_scores),
+        'pattern_length': int(pattern_length),
+        'flags': list(map(int, flags)),
+        'nms': nms,
+        'weights': weights,
+    }
 
 
 def gaussian_kl_divergence(mu1, sigma1, mu2, sigma2):
@@ -200,12 +335,17 @@ def fit_user_labels(scores, flags, training_set):
     covariances = bgmm.covariances_.flatten()
     stds = np.sqrt(covariances)
 
+    scores_all = scores_sel.flatten()
+    mu = np.mean(scores_all)
+    sigma = np.std(scores_all)
+
     active_idx = np.where(weights > weight_threshold)[0]
     if len(active_idx) < 2:
         print('剩下不到两个活跃成分:')
         for idx in active_idx:
             print(f"  mean: {means[idx]:.4f}, std: {stds[idx]:.4f}, weight: {weights[idx]:.4f}")
-        return 1, [-1]
+        return 1, [-1], mu, sigma
+
 
     labels = bgmm.predict(scores_sel)
     mask_active_points = np.isin(labels, active_idx)
@@ -218,7 +358,7 @@ def fit_user_labels(scores, flags, training_set):
         print(num_flagged)
         if pval >= 0.05 and num_flagged >= 150:
             print("Diptest -> p >= 0.05，视作单峰合并")
-            return 1, [0]
+            return 1, [0], mu, sigma
     else:
         print("活跃成分内的已标记点不足，跳过 Dip 测试")
 
@@ -281,7 +421,7 @@ def fit_user_labels(scores, flags, training_set):
         l = xs[idx_L]
         u = xs[idx_U]
 
-        print(f"L: {L:.4f}, U: {U:.4f}")
+        print(f"L: {l:.4f}, U: {u:.4f}")
         return min(l, u), max(l, u)
 
     for i in range(len(active_sorted) - 1):
@@ -309,7 +449,7 @@ def fit_user_labels(scores, flags, training_set):
 
         if count_between == 0:
             print("在交点 ± 平均σ范围内无任何训练样本，视作单峰合并")
-            return 1, [-1]
+            return 1, [-1], mu, sigma
 
         epsilon = 0.05
         L, U = find_uncertainty_window(mu1, sigma1, w1, mu2, sigma2, w2, epsilon=epsilon, grid_size=2000)
@@ -338,7 +478,6 @@ def fit_user_labels(scores, flags, training_set):
             uncertain_idxs = sorted(set(uncertain_idxs))
 
         if len(uncertain_idxs) < 10:
-            print(111)
             epsilon = 0.1
             L3, U3 = find_uncertainty_window(mu1, sigma1, w1, mu2, sigma2, w2, epsilon=epsilon, grid_size=2000)
             uncertain_idxs = []
@@ -357,6 +496,7 @@ def fit_user_labels(scores, flags, training_set):
 
         if uncertain_idxs:
             print(f"后验 ∈ 筛得 {len(uncertain_idxs)} 个待判定样本")
-            return 0, uncertain_idxs
+            return 0, uncertain_idxs, 0, 0
 
-    return 0, []
+
+    return 1, [-1], mu, sigma
