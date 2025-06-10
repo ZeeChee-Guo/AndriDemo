@@ -339,12 +339,14 @@ def fit_user_labels(scores, flags, training_set):
     mu = np.mean(scores_all)
     sigma = np.std(scores_all)
 
+
+
     active_idx = np.where(weights > weight_threshold)[0]
     if len(active_idx) < 2:
         print('剩下不到两个活跃成分:')
         for idx in active_idx:
             print(f"  mean: {means[idx]:.4f}, std: {stds[idx]:.4f}, weight: {weights[idx]:.4f}")
-        return 1, [-1], mu, sigma
+        return 1, [-1], mu, sigma, 0
 
 
     labels = bgmm.predict(scores_sel)
@@ -358,12 +360,16 @@ def fit_user_labels(scores, flags, training_set):
         print(num_flagged)
         if pval >= 0.05 and num_flagged >= 150:
             print("Diptest -> p >= 0.05，视作单峰合并")
-            return 1, [0], mu, sigma
+            return 1, [0], mu, sigma, 0
     else:
         print("活跃成分内的已标记点不足，跳过 Dip 测试")
 
     for idx in active_idx:
         print(f"  mean: {means[idx]:.4f}, std: {stds[idx]:.4f}, weight: {weights[idx]:.4f}")
+
+    std_all_active = np.std(scores_active)
+    print(f"所有有效成分内的点的标准差: {std_all_active:.4e}")
+
 
     active_sorted = sorted(active_idx, key=lambda idx: means[idx])
 
@@ -443,13 +449,13 @@ def fit_user_labels(scores, flags, training_set):
                 if j < 0 or j >= len(scores):
                     continue
                 s = scores[j]
-                if L0 < s < U0:
+                if L0 < s < U0 and flags[j] == 0:
                     count_between += 1
         print(f"窗口 [{L0:.4f}, {U0:.4f}] 内样本数: {count_between}")
 
         if count_between == 0:
             print("在交点 ± 平均σ范围内无任何训练样本，视作单峰合并")
-            return 1, [-1], mu, sigma
+            return 1, [-1], mu, sigma, 0
 
         epsilon = 0.05
         L, U = find_uncertainty_window(mu1, sigma1, w1, mu2, sigma2, w2, epsilon=epsilon, grid_size=2000)
@@ -478,7 +484,7 @@ def fit_user_labels(scores, flags, training_set):
             uncertain_idxs = sorted(set(uncertain_idxs))
 
         if len(uncertain_idxs) < 10:
-            epsilon = 0.1
+            epsilon = 0.2
             L3, U3 = find_uncertainty_window(mu1, sigma1, w1, mu2, sigma2, w2, epsilon=epsilon, grid_size=2000)
             uncertain_idxs = []
             for seg in training_set:
@@ -496,7 +502,7 @@ def fit_user_labels(scores, flags, training_set):
 
         if uncertain_idxs:
             print(f"后验 ∈ 筛得 {len(uncertain_idxs)} 个待判定样本")
-            return 0, uncertain_idxs, 0, 0
+            return 0, uncertain_idxs, 0, 0,  std_all_active
 
 
-    return 1, [-1], mu, sigma
+    return 1, [-1], mu, sigma, 0

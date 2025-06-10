@@ -1,7 +1,7 @@
 from . import detect_anomalies_bp
 from flask import request, jsonify
 from utils.ml import norm_a_scoring, fit_user_labels, sand_scoring, damp_scoring
-from utils.find_similar_patterns import find_similar_patterns
+from utils.find_similar_patterns import find_similar_patterns, find_similar_anomaly_seq
 import os, json
 import numpy as np
 
@@ -112,6 +112,19 @@ def find_similar_pattern():
 
 
 
+@detect_anomalies_bp.route('find_similar_anomaly_pattern', methods=['POST'])
+def find_similar_anomaly_pattern():
+    json_data = request.get_json()
+    original_data = json_data.get('original_seq')
+    full_data = json_data.get('fullData')
+    flags = json_data.get('flags')
+
+    seq = find_similar_anomaly_seq(original_data, flags, full_data)
+    seq = jsonify(seq)
+    return seq
+
+
+
 @detect_anomalies_bp.route('norm_a_fit_user_labels', methods=['POST'])
 def norm_a_fit_user_labels():
     json_data = request.get_json()
@@ -119,7 +132,7 @@ def norm_a_fit_user_labels():
     flags = np.array(json_data.get('flags'))
     training_set = json_data.get('training_set')
 
-    stable, intersect, mu, sigma = fit_user_labels(scores, flags, training_set)
+    stable, intersect, mu, sigma, active_std = fit_user_labels(scores, flags, training_set)
     print(intersect)
 
-    return jsonify({'stable': stable, 'intersect': intersect, 'mu':mu, 'sigma': sigma})
+    return jsonify({'stable': stable, 'intersect': intersect, 'mu':mu, 'sigma': sigma, 'active_std': active_std})

@@ -1,4 +1,6 @@
-from flask import Flask, render_template
+import os
+
+from flask import Flask, render_template, jsonify
 from blueprints import register_blueprints
 
 app = Flask(__name__)
@@ -8,10 +10,6 @@ register_blueprints(app)
 @app.route('/')
 def index():
     return render_template('index.html')
-
-@app.route('/test1')
-def test1():
-    return render_template('test.html')
 
 
 if __name__ == '__main__':
