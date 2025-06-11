@@ -61,7 +61,7 @@
             font-weight: bold;
             font-size: 2rem;
             pointer-events: none;
-            z-index: 10; /* 避免被 echart 遮住 */
+            z-index: 10;
             background: transparent;
         }
 
@@ -71,6 +71,7 @@
             display: flex;
             flex-direction: column;
             padding: 0.3%;
+            overflow-y: auto;
         }
 
 
@@ -88,23 +89,21 @@
             backface-visibility: hidden;
         }
 
-        .inner {
-            position: relative;
-            width: 100%;
-            height: 100%;
-        }
-
         .showNormalPattern {
-            flex: 0 0 50%;
             flex-direction: column;
             display: flex;
             align-items: center;
             justify-content: center;
         }
 
+        .modal-backdrop.show {
+            opacity: 0.8;
+        }
+
     </style>
 </head>
 <body>
+
 
 <div class="container-fluid">
     <!-- Left Panel Section -->
@@ -139,24 +138,15 @@
         <div class="p-3 bg-light border rounded small text-center d-flex flex-column justify-content-center d-none"
              id="cancelMislabeledPointsSection">
             <h4 class="text-dark fw-bold mb-1 fs-1">Are These
-                <span style="color: rgba(255, 160, 0, 1); font-weight: bold;">X </span>Anomalies? :</h4>
+                <span style="color: rgba(255, 160, 0, 1); font-weight: bold;">X </span>Anomalies?</h4>
         </div>
 
 
-        <!-- Upper Histogram -->
-        <div class="inner d-none" id="innerSection">
-            <div class="upper-histogram p-0 d-flex flex-column d-none" id="upperHistogramChart"
-                 style="height: 100%;">
-                <div style="flex: 0 0 8%; display: flex; align-items: center; justify-content: center;">
-                    <h5 class="m-0">Anomaly Score Distribution</h5>
-                </div>
-                <div id="scoreDistributionChartBack" style="flex: 0 0 82%;"></div>
-                <div style="flex: 0 0 10%;" class="d-flex justify-content-center align-items-center">
-                    <button id="showAdvancedStatistics" class="btn btn-outline-info btn-sm" data-bs-toggle="modal"
-                            data-bs-target="#scoreDistributionModal">Expand Histogram
-                    </button>
-                </div>
-            </div>
+        <div class="d-flex gap-1 mt-2 p-1 w-100 d-none" id="yesOrNoButtonsSection">
+            <button id="markAsAnomaliesBtn" class="btn btn-danger fs-3 w-50">Yes, Anomalies
+            </button>
+            <button id="keepPointsBtn" class="btn btn-primary fs-3 w-50">No, Normal Points
+            </button>
         </div>
 
 
@@ -181,7 +171,7 @@
 
 
         <!-- Stats section3 -->
-        <div id="datasetStats3" class="card p-4 mt-1 d-none w-100">
+        <div id="datasetStats3" class="card p-2 mt-1 d-none w-100">
             <div class="card-body p-1">
                 <div class="d-flex justify-content-between fs-5">
                     <div>
@@ -201,18 +191,18 @@
         </div>
 
         <!-- Stats section4: last sigma, new sigma -->
-        <div id="datasetStats4" class="card p-4 mt-1 d-none w-100">
+        <div id="datasetStats4" class="card p-2 mb-1 mt-1 d-none w-100 flex-wrap: wrap">
             <div class="card-body p-1 fs-5">
                 <div class="d-flex justify-content-between ">
-                    <div style="min-width: 180px; padding-right: 12px;">
+                    <div style="min-width: 40px; padding-right: 12px;">
                         <strong>Previous Anomaly Std. Dev.:</strong>
                         <span class="text-danger" id="lastSigma">0</span>
                     </div>
-                    <div id="newSigmaDiv" style="min-width: 180px; padding-right: 12px;">
+                    <div id="newSigmaDiv" style="min-width: 40px; padding-right: 12px;">
                         <strong>Current Anomaly Std. Dev.:</strong>
                         <span class="text-danger" id="currentSigma">0</span>
                     </div>
-                    <div id="pointsToReviewDiv" style="min-width: 180px;">
+                    <div id="pointsToReviewDiv" style="min-width: 40px;">
                         <strong>Points to Review:</strong>
                         <span style="color: rgba(255, 160, 0, 1)" id="pointsToReview">0</span>
                     </div>
@@ -285,17 +275,21 @@
 
 
         <!-- Show Normal Pattern -->
-        <div id="showNormalPatternArea" class="mt-2 w-100 showNormalPattern d-none" style="height: 100%;">
+        <div id="showNormalPatternArea" class="mt-3 mb-1 w-100 showNormalPattern d-none" style="height: 30vh;">
             <div style="flex: 0 0 8%; display: flex; align-items: center; justify-content: center;">
                 <h5 class="m-0 fw-bold" id="normalPatternChartTitle">Most Similar User-Marked Anomalies</h5>
             </div>
-            <div id="normalPatternChart" style="flex: 0 0 82%; width: 100%;"></div>
-            <div id="normalPatternButtons" style="flex: 0 0 10%; width: 100%;" class="d-flex gap-1">
-                <button id="markAsAnomaliesBtn" class="btn btn-danger fs-3 w-50">Yes, Anomalies
-                </button>
-                <button id="keepPointsBtn" class="btn btn-primary fs-3 w-50">No, Normal Points
-                </button>
+            <div id="normalPatternChart" style="flex: 0 0 92%; width: 100%;"></div>
+        </div>
+
+
+        <!-- Anomaly Score Distribution Histogram -->
+        <div id="anomalyScoreDistributionHistogramSection" class="mt-3 mb-1 w-100 showNormalPattern d-none"
+             style="height: 30vh;">
+            <div style="flex: 0 0 8%; display: flex; align-items: center; justify-content: center;">
+                <h5 class="m-0 fw-bold" id="normalPatternChartTitle">Anomaly Score Distribution Histogram</h5>
             </div>
+            <div id="anomalyScoreDistributionHistogramChart" style="flex: 0 0 92%; width: 100%;"></div>
         </div>
 
     </div>
@@ -464,26 +458,6 @@
 </div>
 
 
-<!-- Advanced Stats Chart-->
-<div class="modal fade" id="scoreDistributionModal" tabindex="-1" aria-labelledby="scoreDistributionModalLabel"
-     aria-hidden="true">
-    <div class="modal-dialog modal-xxl modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header d-flex flex-wrap justify-content-between align-items-center">
-                <h5 class="modal-title me-3" id="scoreDistributionModalLabel">Anomaly Score Distribution</h5>
-                <div class="d-flex flex-wrap gap-3 small">
-                </div>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-
-            <div class="modal-body">
-                <div id="scoreDistributionChart" style="height: 800px; width: 100%;"></div>
-            </div>
-        </div>
-    </div>
-</div>
-
-
 <!-- Evaluation Results Modal-->
 <div class="modal fade" id="evaluationModal" tabindex="-1" aria-labelledby="evaluationModalLabel"
      aria-hidden="true">
@@ -495,10 +469,9 @@
             </div>
             <div class="modal-body">
 
-                <!-- 提示和输入部分 -->
                 <div id="confidenceSection">
                     <p class="text-center text-muted mb-4">
-                        The distribution of marked points has stabilized. Please provide your confidence level (0-1)
+                        The distribution of marked points has stabilized. Please provide your confidence level (1-100)
                         regarding the points you have marked.
                     </p>
                     <div class="mb-3 d-flex justify-content-center">
@@ -533,7 +506,6 @@
                             <td><span id="normAf1Score">-</span></td>
                             <td><span id="normAAccuracyScore">-</span></td>
                             <td><span id="finalThreshold">-</span></td>
-
                         </tr>
                         </tbody>
                     </table>
@@ -588,30 +560,9 @@
 
 
     let chart1, chart2, anomalyScoreChart;
-    let fullData = [], flags = [], brushAreas = [], baseline = [], globalScores = [];
+    let fullData = [], flags = [], brushAreas = [], baseline = [], globalScores = [], firstMarks = [];
     let chart1Title = "Full Data Overview";
     let clickRangeScale = 1;
-
-
-    // advanced score distribution
-    let scoreChart = null;
-    let _scores = [];
-    const modalEl = document.getElementById('scoreDistributionModal');
-    const scoreModal = new bootstrap.Modal(modalEl);
-    let isScoreModalOpen = false;
-    let scoreMin = 0;
-    let scoreBinSize = 0;
-    let scoreBinCount = 200;
-    let thresholdIndex = null;
-    let selectedBinIdx = null;
-    let histogramMin = Infinity, histogramMax = -Infinity;
-
-
-    // upper panel
-    const upperPanel = document.getElementById('upperPanel');
-    let scoreBackChart = null;
-    const backChartDom = document.getElementById('scoreDistributionChartBack');
-
 
     // mark sequential anomalies
     let sequentialMode = false;
@@ -628,6 +579,11 @@
     let norm_a_normal_pattern_chart = null;
     const normal_pattern_chart_backDom = document.getElementById("normalPatternChart");
     let norm_a_intersect = [];
+
+
+    // anomaly score distribution histogram
+    const anomalyScoreHistogramChartDom = document.getElementById('anomalyScoreDistributionHistogramChart');
+    let anomalyScoreHistogramChart = null;
 
 
     // evaluation modal
@@ -650,7 +606,13 @@
     let pointsForReview = 0;
     let lastStep = -1;
     let process_step = -1;
-    let trainingSet;
+    let trainingSet; // indexes of training set points
+    let anomalyMus = [];
+    let anomalySigmas = [];
+    let anomalyWeights = [];
+    let flagsCopy;
+    let responseRounds = 0;
+    let copied = false;
 
 
     function initCharts() {
@@ -830,9 +792,9 @@
         window.addEventListener("resize", () => {
             chart1.resize();
             chart2.resize();
-            if (scoreChart) scoreChart.resize();
-            if (scoreBackChart) scoreBackChart.resize();
             if (norm_a_normal_pattern_chart) norm_a_normal_pattern_chart.resize();
+            if (anomalyScoreChart) anomalyScoreChart.resize();
+            if (anomalyScoreHistogramChart) anomalyScoreHistogramChart.resize();
         });
 
 
@@ -1055,13 +1017,21 @@
         let anomalyScores = trainingSet.map(idx => globalScores[idx]);
 
         let option = {
+            renderer: 'canvas',
+            devicePixelRatio: window.devicePixelRatio,
             xAxis: {type: 'category', data: trainingSet, name: "index"},
             yAxis: {
                 type: 'value',
                 name: "Anomaly Score"
             },
             dataZoom: [{type: "inside"}],
-            toolbox: {show: false},
+            tooltip: {
+                trigger: "axis",
+                formatter: params => {
+                    let p = params[0];
+                    return `Index: ${p.axisValue}<br/>Anomaly Score: ${p.data}.toFixed(3)}`;
+                }
+            },
             series: [{
                 type: 'line',
                 data: anomalyScores,
@@ -1683,6 +1653,10 @@
                             markAnomalies(flags, [], chart2Flags);
                         }
 
+                        if (hasAtLeast100UserMarkedPointsInTrainingSet()){
+                            document.getElementById('autoDetectBtn').click();
+                        }
+
                         break;
 
                     case 0:
@@ -1820,11 +1794,11 @@
         document.getElementById('threeMethods').classList.add('d-none');
         document.getElementById('datasetStats').classList.add('d-none');
         document.getElementById('autoDetectSection').classList.add('d-none');
-        document.getElementById('showAdvancedStatistics').classList.remove('d-none');
-        document.getElementById('datasetStats3').classList.remove('d-none');
-        document.getElementById('upperHistogramChart').classList.remove('d-none');
+        // document.getElementById('datasetStats3').classList.remove('d-none');
         document.getElementById('showNormalPatternArea').classList.remove('d-none');
+        document.getElementById('anomalyScoreDistributionHistogramSection').classList.remove('d-none');
         document.getElementById('cancelMislabeledPointsSection').classList.remove('d-none');
+        document.getElementById('yesOrNoButtonsSection').classList.remove('d-none');
         document.getElementById('datasetStats4').classList.remove('d-none');
         clickRangeScale = 4;
 
@@ -1845,6 +1819,7 @@
         chartsWrapper.appendChild(chart1Dom);
         chartsWrapper.appendChild(scoreChart);
 
+        initAnomalyScoreHistogramChart();
         initAnomalyScoreChart();
         chart2.resize();
         anomalyScoreChart.resize();
@@ -1920,6 +1895,13 @@
         //    alert('Please Mark at Least 100 Points');
         //    return;
         //}
+
+        if (!copied) {
+            flagsCopy = flags.slice();
+            copied = true;
+        } else {
+            flags = flagsCopy.slice();
+        }
 
         let patternLength;
         const autoDetectCheckbox = document.getElementById('autoDetectPatternLength');
@@ -1999,7 +1981,6 @@
                     norm_a_weights = data.weights;
                     clickRangeScale = 4;
                     enableRevisePotentialMislabeledAnomaliesPhase();
-                    initUpperHistogramChart();
                     initNormPatternChart();
                     fitUserLabels();
                 }, 500);
@@ -2016,35 +1997,12 @@
 
     // fit user labels
     function fitUserLabels() {
-        let minIndex = isPossibleMislabeledPointsExist(training_set_10th);
-
-        // exist mislabeled points
-        if (minIndex !== -1 && process_step === -1) {
-            process_step = 0;
-            checkPossibleMislabeledPoints(minIndex);
-            // update sigma
-            lastSigma = currentSigma;
-            document.getElementById('lastSigma').innerText = currentSigma;
-            const anomalyScores = globalScores.filter((_, idx) => flags[idx] === 1);
-            const mean = anomalyScores.reduce((a, b) => a + b, 0) / anomalyScores.length;
-            const variance = anomalyScores.reduce((sum, score) => sum + Math.pow(score - mean, 2), 0) / anomalyScores.length;
-            currentSigma = Math.sqrt(variance).toFixed(5);
-            document.getElementById('currentSigma').innerText = currentSigma;
-            document.getElementById('pointsToReview').innerText = norm_a_intersect.length.toString();
-            return
-        }
-
-        process_step = 1;
-
-
         const url = "{{ url_for('detect_anomalies.norm_a_fit_user_labels') }}";
-
         const body = {
             scores: globalScores,
             flags: flags,
             training_set: brushAreas,
         }
-
         fetch(url, {
             method: 'POST',
             headers: {
@@ -2068,12 +2026,36 @@
                         final_mu = data.mu;
                         final_sigma = data.sigma;
                     } else {
+                        anomalyMus = data.mu;
+                        anomalySigmas = data.sigma;
+                        anomalyWeights = data.weights;
+
+
+                        let minIndex = isPossibleMislabeledPointsExist(training_set_10th);
+
+                        renderAnomalyScoreHistogramChart();
+
+                        // exist mislabeled points
+                        if (minIndex !== -1 && process_step === -1) {
+                            process_step = 0;
+                            checkPossibleMislabeledPoints(minIndex);
+                            // update sigma
+                            lastSigma = currentSigma;
+                            document.getElementById('lastSigma').innerText = currentSigma;
+                            const anomalyScores = globalScores.filter((_, idx) => flags[idx] === 1);
+                            const mean = anomalyScores.reduce((a, b) => a + b, 0) / anomalyScores.length;
+                            const variance = anomalyScores.reduce((sum, score) => sum + Math.pow(score - mean, 2), 0) / anomalyScores.length;
+                            currentSigma = Math.sqrt(variance).toFixed(5);
+                            document.getElementById('currentSigma').innerText = currentSigma;
+                            document.getElementById('pointsToReview').innerText = norm_a_intersect.length.toString();
+                            return
+                        }
+
+                        process_step = 1;
+
+
                         norm_a_intersect = data.intersect;
-                        lastSigma = currentSigma;
-                        document.getElementById('lastSigma').innerText = lastSigma;
                         currentSigma = data.active_std.toFixed(5);
-                        document.getElementById('currentSigma').innerText = currentSigma;
-                        document.getElementById('pointsToReview').innerText = norm_a_intersect.length.toString();
                         findNormalPointsClosestToIntersectionIndex(norm_a_intersect, norm_a_intersect[0]);
                     }
                 }
@@ -2104,12 +2086,10 @@
         addAnomalyLayer(chart1, fullData, flags_for_marking_more_labels, 4);
         addAnomalyLayer(anomalyScoreChart, globalScores, flags_for_marking_more_labels, 4);
 
-
         const left = Math.max(0, minIndex - 10);
         const right = Math.min(fullData.length - 1, minIndex + 10);
         const f = Array.from({length: right - left + 1}, (_, k) => left + k);
         document.getElementById('normalPatternChartTitle').innerText = 'Most Similar User-Marked Anomaly Pattern';
-        renderScoreDistributionUpperChart(scoreBackChart, globalScores);
 
         findSimilarAnomalyPattern(f);
 
@@ -2193,345 +2173,11 @@
         addAnomalyLayer(chart1, fullData, flags_for_canceling_marked_labels, 3);
 
         document.getElementById('normalPatternChartTitle').innerText = 'Most Similar Normal Pattern';
-        renderScoreDistributionUpperChart(scoreBackChart, globalScores);
+        ;
 
         findSimilarNormalPatterns(Math.min(...norm_a_intersect), Math.max(...norm_a_intersect));
 
 
-    }
-
-
-    // advanced score distribution ============================ ↓
-    document.getElementById('showAdvancedStatistics').addEventListener('click', () => {
-        showScoreDistributionModal(globalScores);
-    });
-
-    // When the modal is shown, initialize or resize the chart and render
-    modalEl.addEventListener('shown.bs.modal', () => {
-        const dom = document.getElementById('scoreDistributionChart');
-        if (!scoreChart) {
-            scoreChart = echarts.init(dom, null, {
-                renderer: 'canvas',
-                devicePixelRatio: window.devicePixelRatio
-            });
-
-            initScoreDistributionChart();
-
-
-        } else {
-            scoreChart.resize();
-        }
-        renderScoreDistribution(scoreChart, globalScores);
-    });
-
-    // Clean up backdrop on hide
-    modalEl.addEventListener('hidden.bs.modal', () => {
-        isScoreModalOpen = false;
-        document.body.classList.remove('modal-open');
-        document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
-        renderScoreDistributionUpperChart(scoreBackChart, globalScores);
-    });
-
-    // show modal
-    function showScoreDistributionModal(scores) {
-        _scores = scores.slice();
-        isScoreModalOpen = true;
-        scoreModal.show();
-    }
-
-    // Renders the histogram plus vertical line.
-    function renderScoreDistribution(chart, scores) {
-        const binsFlag0 = new Array(scoreBinCount).fill(0); // flags[i] === 0
-        const binsFlag1 = new Array(scoreBinCount).fill(0); // flags[i] === 1
-        const binsIntersect = new Array(scoreBinCount).fill(0);
-
-        scores.forEach((score, i) => {
-            const inBrush = !brushAreas?.length || brushAreas.some(area => i >= area.start && i <= area.end);
-            if (!inBrush) return;
-
-            const idx = Math.min(Math.floor((score - histogramMin) / scoreBinSize), scoreBinCount - 1);
-
-            switch (flags[i]) {
-                case 0:
-                    binsFlag0[idx]++;
-                    break;
-                case 1:
-                    binsFlag1[idx]++;
-                    break;
-                case 3:
-                    binsFlag1[idx]++;
-                    break;
-                case 4:
-                    binsFlag0[idx]++;
-                    break;
-            }
-
-        });
-
-
-        norm_a_intersect.forEach(i => {
-            const inBrush = !brushAreas?.length || brushAreas.some(area => i >= area.start && i <= area.end);
-            if (!inBrush) return;
-            const score = globalScores[i];
-            const idx = Math.min(Math.floor((score - histogramMin) / scoreBinSize), scoreBinCount - 1);
-            binsIntersect[idx]++;
-        });
-
-
-        const binLabels = Array.from({length: scoreBinCount}, (_, i) =>
-            (histogramMin + i * scoreBinSize).toFixed(4)
-        );
-
-        const legendItems = [
-            'Unmarked',
-            'User Anomalies',
-            'Points to Review',
-        ];
-
-        const option = {
-            title: {
-                text: 'Anomaly Score Distribution',
-                left: 'center'
-            },
-            dataZoom: {
-                type: 'inside',
-            },
-            tooltip: {
-                trigger: 'axis',
-                axisPointer: {type: 'shadow'}
-            },
-            legend: {
-                top: 30,
-                data: legendItems
-            },
-            grid: {top: 90, bottom: 60, left: 100, right: 100},
-            xAxis: {
-                type: 'category',
-                data: binLabels,
-                name: 'Anomaly Score',
-                nameLocation: 'middle',
-                nameGap: 40,
-                nameTextStyle: {
-                    fontSize: 16,
-                },
-                axisLabel: {
-                    interval: Math.ceil(scoreBinCount / 50),
-                    rotate: 45
-                }
-            },
-            yAxis: [
-                {
-                    type: 'value',
-                    name: 'Unmarked Points Frequency',
-                    nameLocation: 'middle',
-                    nameGap: 50,
-                    nameTextStyle: {
-                        color: 'rgba(100, 149, 237, 1)',
-                        fontSize: 18,
-
-                    },
-                    axisLabel: {color: 'rgba(100, 149, 237, 1)'},
-                    max: v => Math.floor(v.max * 1.1),
-                },
-                {
-                    type: 'value',
-                    name: 'User Marked Points Frequency',
-                    nameLocation: 'middle',
-                    nameGap: 50,
-                    nameTextStyle: {
-                        color: 'rgba(255, 30, 0, 1)',
-                        fontSize: 18,
-                    },
-                    axisLabel: {color: 'rgba(255, 30, 0, 1)'},
-                    max: v => Math.floor(v.max * 1.1)
-                }
-            ],
-            series: [
-                {
-                    name: 'Unmarked',
-                    type: 'bar',
-                    data: binsFlag0,
-                    yAxisIndex: 0,
-                    itemStyle: {color: 'rgba(100, 149, 237, 0.8)'}
-                },
-                {
-                    name: 'User Anomalies',
-                    type: 'bar',
-                    data: binsFlag1,
-                    yAxisIndex: 1,
-                    itemStyle: {color: 'rgba(255,0,0,1)'}
-                },
-                {
-                    name: 'Points to Review',
-                    type: 'bar',
-                    data: binsIntersect,
-                    yAxisIndex: 1,
-                    itemStyle: {color: 'rgba(255, 160, 0, 1)'}
-                }
-            ]
-        };
-
-        chart.setOption(option);
-    }
-
-    function initScoreDistributionChart() {
-        const binCount = scoreBinCount;
-
-        globalScores.forEach((score, i) => {
-            const inBrush = !brushAreas?.length ||
-                brushAreas.some(area => i >= area.start && i <= area.end);
-            if (inBrush) {
-                histogramMin = Math.min(histogramMin, score);
-                histogramMax = Math.max(histogramMax, score);
-            }
-        });
-        const binSize = (histogramMax - histogramMin) / binCount;
-        scoreMin = histogramMin;
-        scoreBinSize = binSize;
-    }
-
-    // advanced score distribution ============================ ↑
-
-
-    // init upper histogram chart
-    function initUpperHistogramChart() {
-        if (!scoreBackChart) {
-            scoreBackChart = echarts.init(backChartDom, null, {
-                renderer: 'canvas',
-                devicePixelRatio: window.devicePixelRatio
-            });
-            const binCount = scoreBinCount;
-
-            globalScores.forEach((score, i) => {
-                const inBrush = !brushAreas?.length ||
-                    brushAreas.some(area => i >= area.start && i <= area.end);
-                if (inBrush) {
-                    histogramMin = Math.min(histogramMin, score);
-                    histogramMax = Math.max(histogramMax, score);
-                }
-            });
-            const binSize = (histogramMax - histogramMin) / binCount;
-            scoreMin = histogramMin;
-            scoreBinSize = binSize;
-        } else {
-            scoreBackChart.resize();
-        }
-
-        renderScoreDistributionUpperChart(scoreBackChart, globalScores);
-    }
-
-    // update and render upper histogram
-    function renderScoreDistributionUpperChart(chart, scores) {
-        const binCount = scoreBinCount;
-        let min = Infinity, max = -Infinity;
-        scores.forEach((score, i) => {
-            const inBrush = !brushAreas?.length ||
-                brushAreas.some(area => i >= area.start && i <= area.end);
-            if (inBrush) {
-                min = Math.min(min, score);
-                max = Math.max(max, score);
-            }
-        });
-        const binSize = (max - min) / binCount;
-        scoreMin = min;
-        scoreBinSize = binSize;
-
-
-        const binsFlag0 = new Array(binCount).fill(0); // flags[i] === 0
-        const binsFlag1 = new Array(binCount).fill(0); // flags[i] === 1
-        const binsIntersect = new Array(scoreBinCount).fill(0);
-
-        scores.forEach((score, i) => {
-            const inBrush = !brushAreas?.length ||
-                brushAreas.some(area => i >= area.start && i <= area.end);
-            if (!inBrush) return;
-
-            const idx = Math.min(Math.floor((score - min) / binSize), binCount - 1);
-
-            switch (flags[i]) {
-                case 0:
-                    binsFlag0[idx]++;
-                    break;
-                case 1:
-                    binsFlag1[idx]++;
-                    break;
-                case 3:
-                    binsFlag1[idx]++;
-                    break;
-                case 4:
-                    binsFlag0[idx]++;
-                    break;
-            }
-        });
-
-
-        norm_a_intersect.forEach(i => {
-            const inBrush = !brushAreas?.length || brushAreas.some(area => i >= area.start && i <= area.end);
-            if (!inBrush) return;
-            const score = globalScores[i];
-            const idx = Math.min(Math.floor((score - histogramMin) / scoreBinSize), scoreBinCount - 1);
-            binsIntersect[idx]++;
-        });
-
-
-        const binLabels = Array.from({length: binCount}, (_, i) =>
-            (min + i * binSize).toFixed(4)
-        );
-
-
-        const option = {
-            title: {show: false},
-            tooltip: {
-                trigger: 'axis',
-                axisPointer: {type: 'shadow'}
-            },
-            legend: {show: false},
-            grid: {top: 6, bottom: 36, left: 38, right: 30},
-            xAxis: {
-                type: 'category',
-                data: binLabels,
-                axisLabel: {
-                    interval: Math.ceil(binCount / 25),
-                    rotate: 45
-                }
-            },
-            yAxis: [
-                {
-                    type: 'value',
-                    max: v => Math.floor(v.max * 1.1)
-                },
-                {
-                    type: 'value',
-                    position: 'right',
-                    max: v => Math.floor(v.max * 1.1)
-                }
-            ],
-            series: [
-                {
-                    name: 'Unmarked',
-                    type: 'bar',
-                    data: binsFlag0,
-                    yAxisIndex: 0,
-                    itemStyle: {color: 'rgba(100, 149, 237, 0.8)'}
-                },
-                {
-                    name: 'User Anomalies',
-                    type: 'bar',
-                    data: binsFlag1,
-                    yAxisIndex: 1,
-                    itemStyle: {color: 'rgba(255,0,0,1)'}
-                },
-                {
-                    name: 'Points to Review',
-                    type: 'bar',
-                    data: binsIntersect,
-                    yAxisIndex: 1,
-                    itemStyle: {color: 'rgba(255, 160, 0, 1)'}
-                }
-            ]
-        };
-
-        chart.setOption(option);
     }
 
 
@@ -2545,7 +2191,6 @@
         } else {
             norm_a_normal_pattern_chart.resize();
         }
-
     }
 
     // update and render norm chart
@@ -2567,7 +2212,7 @@
             }
             return {
                 value: val,
-                symbol: 'emptyCircle',
+                symbol: 'circle',
             }
         });
 
@@ -2619,6 +2264,7 @@
             : 0;
     }
 
+
     function getSigma(mean) {
         const brushScores = globalScores.filter((_, i) => isInBrushAreas(i));
         const n = brushScores.length;
@@ -2627,7 +2273,6 @@
         const variance = brushScores.reduce((sum, val) => sum + (val - mean) ** 2, 0) / n;
         return Math.sqrt(variance);
     }
-
 
     // When percentile=20, return the "largest top 20% percentile value" (i.e., the 80th percentile).
     function getTopPercentileValue(percentile) {
@@ -2750,6 +2395,7 @@
             })
 
             .catch(error => {
+                console.log(error);
             });
     }
 
@@ -2769,8 +2415,149 @@
         return minIndex;
     }
 
-
     // utils ============================ ↑
+
+
+    // anomaly score histogram ============================ ↓
+    function initAnomalyScoreHistogramChart() {
+        if (!anomalyScoreHistogramChart) {
+            anomalyScoreHistogramChart = echarts.init(anomalyScoreHistogramChartDom, null, {
+                renderer: 'canvas',
+                devicePixelRatio: window.devicePixelRatio
+            });
+        } else {
+            anomalyScoreHistogramChart.resize();
+        }
+    }
+
+
+    function renderAnomalyScoreHistogramChart() {
+        const anomalyScores = globalScores.filter((_, idx) => flags[idx] === 1);
+
+        if (anomalyScores.length === 0) {
+            anomalyScoreHistogramChart.clear();
+            anomalyScoreHistogramChart.setOption({
+                title: {text: 'No anomalies detected', left: 'center'},
+                xAxis: {show: false},
+                yAxis: {show: false},
+                series: []
+            });
+            return;
+        }
+
+        const minScore = 0;
+        const maxScore = 1;
+        const binCount = 50;
+        const binSize = (maxScore - minScore) / binCount;
+        const bins = new Array(binCount).fill(0);
+
+        anomalyScores.forEach(score => {
+            let binIdx = Math.floor((score - minScore) / binSize);
+            if (binIdx === binCount) binIdx--;
+            bins[binIdx]++;
+        });
+
+        const xLabels = [];
+        const xCenters = [];
+        for (let i = 0; i < binCount; i++) {
+            const binCenter = minScore + binSize * (i + 0.5);
+            xLabels.push(binCenter.toFixed(2));
+            xCenters.push(binCenter);
+        }
+
+        function gaussianPDF(x, mu, sigma) {
+            return 1.0 / (sigma * Math.sqrt(2 * Math.PI)) * Math.exp(-0.5 * Math.pow((x - mu) / sigma, 2));
+        }
+
+        let densityVals = xCenters.map(x => {
+            let sum = 0;
+            for (let i = 0; i < anomalyMus.length; ++i) {
+                sum += anomalyWeights[i] * gaussianPDF(x, anomalyMus[i], anomalySigmas[i]);
+            }
+            return sum;
+        });
+
+        const maxBin = Math.max(...bins);
+        const maxDensity = Math.max(...densityVals);
+        const scaleFactor = maxDensity > 0 ? (maxBin / maxDensity) : 1;
+        densityVals = densityVals.map(y => y * scaleFactor);
+
+        const series = [
+            {
+                type: 'bar',
+                data: bins,
+                itemStyle: {
+                    color: 'rgba(255, 120, 110, 1)',
+                    borderRadius: 3
+                },
+                barWidth: '70%',
+                name: 'Count'
+            },
+
+        ];
+
+        for (let i = 0; i < anomalyMus.length; ++i) {
+            const compVals = xCenters.map(
+                x => anomalyWeights[i] * gaussianPDF(x, anomalyMus[i], anomalySigmas[i]) * scaleFactor
+            );
+            series.push({
+                type: 'line',
+                data: compVals,
+                name: `Component ${i + 1}`,
+                symbol: 'circle',
+                lineStyle: {
+                    width: 2,
+                    type: 'solid',
+                    color: "rgba(255, 0, 0, 0.85)",
+                },
+                smooth: true,
+                z: 8,
+                showSymbol: false
+            });
+        }
+
+
+        const option = {
+            title: {
+                text: 'Anomaly Score Distribution (Flag=1)',
+                left: 'center'
+            },
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: {type: 'shadow'},
+                formatter: function (params) {
+                    const idx = params[0].dataIndex;
+                    const binStart = (minScore + idx * binSize).toFixed(3);
+                    const binEnd = (minScore + (idx + 1) * binSize).toFixed(3);
+                    let tip = `Score range: [${binStart}, ${binEnd})<br>Count: ${params[0].value}`;
+                    if (params.length > 1 && params[1].seriesType === 'line') {
+                        tip += `<br>BGMM Density: ${(params[1].value / scaleFactor).toFixed(5)}`;
+                    }
+                    return tip;
+                }
+            },
+            dataZoom: [{type: "inside"}],
+            grid: {left: '8%', right: '6%', bottom: '12%', top: 50},
+            xAxis: {
+                type: 'category',
+                data: xLabels,
+                nameLocation: 'center',
+                nameGap: 30,
+                axisLabel: {rotate: 45}
+            },
+            yAxis: {
+                type: 'value',
+                name: 'Count'
+            },
+            series: series
+        };
+
+        anomalyScoreHistogramChart.clear();
+        anomalyScoreHistogramChart.setOption(option);
+    }
+
+
+    // anomaly score histogram ============================ ↑
 
 
     // final test

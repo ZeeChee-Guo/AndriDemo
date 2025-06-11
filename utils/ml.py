@@ -1,6 +1,5 @@
 import numpy as np
 from joblib import Memory
-import diptest
 
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.mixture import BayesianGaussianMixture
@@ -9,6 +8,7 @@ import pandas as pd
 from external.a2d2.util.TSB_AD.models.norma import NORMA
 from TSB_UAD.models.damp import DAMP
 from external.a2d2.util.util_a2d2 import find_length
+
 from TSB_UAD.models.sand import SAND
 from TSB_UAD.utils.slidingWindows import find_length as find_sand_length
 
@@ -200,6 +200,9 @@ def compute_training_set_damp_scores(data_arr, training_set, slidingWindow=None)
     return slidingWindow, scores_full, [motif.tolist()], [1]
 
 
+
+
+
 def merge_intervals(intervals):
     if not intervals:
         return []
@@ -323,51 +326,34 @@ def fit_user_labels(scores, flags, training_set):
     masks = (flags == 1)
     scores_sel = scores[masks].reshape(-1, 1)
     bgmm = BayesianGaussianMixture(
-        n_components=5,
+        n_components=2,
         weight_concentration_prior_type='dirichlet_process',
         random_state=0
     )
     bgmm.fit(scores_sel)
 
-    weight_threshold = 0.2
+    weight_threshold = 0.01
     weights = bgmm.weights_
     means = bgmm.means_.flatten()
     covariances = bgmm.covariances_.flatten()
     stds = np.sqrt(covariances)
 
-    scores_all = scores_sel.flatten()
-    mu = np.mean(scores_all)
-    sigma = np.std(scores_all)
-
-
-
+    labels = bgmm.predict(scores_sel)
     active_idx = np.where(weights > weight_threshold)[0]
+    mask_active_points = np.isin(labels, active_idx)
+    scores_active = scores_sel[mask_active_points].flatten()
+    std_all_active = np.std(scores_active)
+
     if len(active_idx) < 2:
         print('剩下不到两个活跃成分:')
         for idx in active_idx:
             print(f"  mean: {means[idx]:.4f}, std: {stds[idx]:.4f}, weight: {weights[idx]:.4f}")
-        return 1, [-1], mu, sigma, 0
+        return 1, [-1], means.tolist(), stds.tolist(), std_all_active, weights.tolist()
 
-
-    labels = bgmm.predict(scores_sel)
-    mask_active_points = np.isin(labels, active_idx)
-    scores_active = scores_sel[mask_active_points].flatten()
-    if scores_active.size >= 2:
-        scores_active_sorted = np.sort(scores_active)
-        dip_stat, pval = diptest.diptest(scores_active_sorted)
-        print(f"[只取活跃成分标记点] Dip Statistic: {dip_stat:.4e}, P-Value: {pval}")
-        num_flagged = np.sum(flags == 1)
-        print(num_flagged)
-        if pval >= 0.05 and num_flagged >= 150:
-            print("Diptest -> p >= 0.05，视作单峰合并")
-            return 1, [0], mu, sigma, 0
-    else:
-        print("活跃成分内的已标记点不足，跳过 Dip 测试")
 
     for idx in active_idx:
         print(f"  mean: {means[idx]:.4f}, std: {stds[idx]:.4f}, weight: {weights[idx]:.4f}")
 
-    std_all_active = np.std(scores_active)
     print(f"所有有效成分内的点的标准差: {std_all_active:.4e}")
 
 
@@ -455,7 +441,7 @@ def fit_user_labels(scores, flags, training_set):
 
         if count_between == 0:
             print("在交点 ± 平均σ范围内无任何训练样本，视作单峰合并")
-            return 1, [-1], mu, sigma, 0
+            return 1, [-1], means.tolist(), stds.tolist(), std_all_active, weights.tolist()
 
         epsilon = 0.05
         L, U = find_uncertainty_window(mu1, sigma1, w1, mu2, sigma2, w2, epsilon=epsilon, grid_size=2000)
@@ -502,7 +488,7 @@ def fit_user_labels(scores, flags, training_set):
 
         if uncertain_idxs:
             print(f"后验 ∈ 筛得 {len(uncertain_idxs)} 个待判定样本")
-            return 0, uncertain_idxs, 0, 0,  std_all_active
+            return 0, uncertain_idxs, means.tolist(), stds.tolist(), std_all_active, weights.tolist()
 
 
-    return 1, [-1], mu, sigma, 0
+    return 1, [-1], means.tolist(), stds.tolist(), std_all_active, weights.tolist()

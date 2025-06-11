@@ -132,7 +132,8 @@ def norm_a_fit_user_labels():
     flags = np.array(json_data.get('flags'))
     training_set = json_data.get('training_set')
 
-    stable, intersect, mu, sigma, active_std = fit_user_labels(scores, flags, training_set)
+    stable, intersect, mu, sigma, active_std, weights = fit_user_labels(scores, flags, training_set)
     print(intersect)
 
-    return jsonify({'stable': stable, 'intersect': intersect, 'mu':mu, 'sigma': sigma, 'active_std': active_std})
+    return jsonify({'stable': stable, 'intersect': intersect, 'mu':mu, 'sigma': sigma, 'active_std': active_std,
+                    'weights': weights})
