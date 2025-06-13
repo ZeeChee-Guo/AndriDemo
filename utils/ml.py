@@ -8,8 +8,8 @@ import pandas as pd
 from external.a2d2.util.TSB_AD.models.norma import NORMA
 from TSB_UAD.models.damp import DAMP
 from external.a2d2.util.util_a2d2 import find_length
-
 from TSB_UAD.models.sand import SAND
+from external.a2d2.util.TSB_AD.models.a2d2 import A2D2
 from TSB_UAD.utils.slidingWindows import find_length as find_sand_length
 
 memory = Memory(location="./norma_cache", verbose=0)
@@ -17,190 +17,239 @@ memory = Memory(location="./norma_cache", verbose=0)
 
 @memory.cache
 def compute_global_scores(data_arr, training_set, pattern_length=None):
-    """
-    NormA
-    :param data_arr:
-    :param training_set:
-    :param pattern_length:
-    :return:
-    """
     if pattern_length is None:
         pattern_length = find_length(data_arr)
 
-    merged_intervals = merge_intervals(training_set)
-    train_indices = []
-    for interval in merged_intervals:
-        train_indices.extend(range(interval['start'], interval['end'] + 1))
-    train_indices = np.array(sorted(set(train_indices)), dtype=int)
+    N = len(data_arr)
+    is_train = np.zeros(N, dtype=bool)
+    for seg in training_set:
+        is_train[seg['start']:seg['end']+1] = True
 
-    all_indices = np.arange(len(data_arr))
-    test_indices = np.setdiff1d(all_indices, train_indices)
+    segments = []
+    idx = 0
+    while idx < N:
+        start_idx = idx
+        curr_flag = is_train[idx]
+        while idx + 1 < N and is_train[idx + 1] == curr_flag:
+            idx += 1
+        end_idx = idx
+        segments.append({'start': start_idx, 'end': end_idx, 'is_train': curr_flag})
+        idx += 1
 
-    train_data = data_arr[train_indices]
-    clf_train = NORMA(
-        pattern_length=pattern_length,
-        nm_size=3 * pattern_length,
-        percentage_sel=1,
-        normalize='z-norm'
-    )
-    clf_train.fit(train_data)
-    raw_scores_train = clf_train.decision_scores_
+    scores_full = np.zeros(N)
+    all_nm = []
+    all_nm_weights = []
 
-    pad = (pattern_length - 1) // 2
-    if raw_scores_train.size > 0:
-        norm_scores_train = MinMaxScaler(feature_range=(0, 1)) \
-            .fit_transform(raw_scores_train.reshape(-1, 1)) \
-            .ravel()
-        left_pad_train = np.full(pad, norm_scores_train[0])
-        right_pad_train = np.full(pad, norm_scores_train[-1])
-        padded_scores_train = np.concatenate([left_pad_train, norm_scores_train, right_pad_train])
-    else:
-        padded_scores_train = np.zeros(len(train_data))
-
-    if test_indices.size > 0:
-        test_data = data_arr[test_indices]
-        clf_test = NORMA(
+    for seg in segments:
+        seg_data = data_arr[seg['start']:seg['end']+1]
+        if len(seg_data) == 0:
+            continue
+        clf = NORMA(
             pattern_length=pattern_length,
             nm_size=3 * pattern_length,
             percentage_sel=1,
             normalize='z-norm'
         )
-        clf_test.fit(test_data)
-        raw_scores_test = clf_test.decision_scores_
+        clf.fit(seg_data)
+        raw_scores = clf.decision_scores_
+        pad = (pattern_length - 1) // 2
 
-        if raw_scores_test.size > 0:
-            norm_scores_test = MinMaxScaler(feature_range=(0, 1)) \
-                .fit_transform(raw_scores_test.reshape(-1, 1)) \
-                .ravel()
-            left_pad_test = np.full(pad, norm_scores_test[0])
-            right_pad_test = np.full(pad, norm_scores_test[-1])
-            padded_scores_test = np.concatenate([left_pad_test, norm_scores_test, right_pad_test])
+        if raw_scores.size > 0:
+            norm_scores = MinMaxScaler(feature_range=(0, 1)) \
+                .fit_transform(raw_scores.reshape(-1, 1)).ravel()
+            left_pad = np.full(pad, norm_scores[0])
+            right_pad = np.full(pad, norm_scores[-1])
+            padded_scores = np.concatenate([left_pad, norm_scores, right_pad])
+            if padded_scores.shape[0] > seg_data.shape[0]:
+                padded_scores = padded_scores[:seg_data.shape[0]]
+            elif padded_scores.shape[0] < seg_data.shape[0]:
+                padded_scores = np.pad(padded_scores, (0, seg_data.shape[0]-padded_scores.shape[0]), 'edge')
         else:
-            padded_scores_test = np.zeros(len(test_data))
-    else:
-        padded_scores_test = np.array([])
+            padded_scores = np.zeros(len(seg_data))
 
-    scores_full = np.zeros(len(data_arr))
-    if train_indices.size > 0:
-        assert padded_scores_train.shape[0] == train_indices.shape[0]
-        scores_full[train_indices] = padded_scores_train
+        scores_full[seg['start']:seg['end']+1] = padded_scores
 
-    if test_indices.size > 0:
-        assert padded_scores_test.shape[0] == test_indices.shape[0]
-        scores_full[test_indices] = padded_scores_test
+        if seg['is_train']:
+            all_nm.append(clf.normalmodel[0])
+            all_nm_weights.append(clf.normalmodel[1])
 
-    return pattern_length, scores_full, clf_train.normalmodel[0], clf_train.normalmodel[1]
+    return pattern_length, scores_full, all_nm, all_nm_weights
 
 
 @memory.cache
 def compute_training_set_sand_scores(data_arr, training_set, slidingWindow=None):
     if slidingWindow is None:
         slidingWindow = find_sand_length(data_arr)
-    merged_intervals = merge_intervals(training_set)
-    train_indices = []
-    for interval in merged_intervals:
-        train_indices.extend(range(interval['start'], interval['end'] + 1))
-    train_indices = np.array(sorted(set(train_indices)), dtype=int)
-    test_indices = np.setdiff1d(np.arange(len(data_arr)), train_indices)
 
-    train_data = data_arr[train_indices]
-    clf_train = SAND(
-        pattern_length=slidingWindow,
-        subsequence_length=4 * slidingWindow,
-    )
-    clf_train.fit(train_data, overlaping_rate=int(1.5 * slidingWindow))
-    scores_train = MinMaxScaler(feature_range=(0, 1)).fit_transform(clf_train.decision_scores_.reshape(-1, 1)).ravel()
+    N = len(data_arr)
+    is_train = np.zeros(N, dtype=bool)
+    for seg in training_set:
+        is_train[seg['start']:seg['end']+1] = True
 
-    if len(test_indices) > 0:
-        test_data = data_arr[test_indices]
-        clf_test = SAND(
+    segments = []
+    idx = 0
+    while idx < N:
+        start_idx = idx
+        curr_flag = is_train[idx]
+        while idx + 1 < N and is_train[idx + 1] == curr_flag:
+            idx += 1
+        end_idx = idx
+        segments.append({'start': start_idx, 'end': end_idx, 'is_train': curr_flag})
+        idx += 1
+
+    scores_full = np.zeros(N)
+    all_clusters = []
+    all_weights = []
+
+    for seg in segments:
+        seg_data = data_arr[seg['start']:seg['end']+1]
+        if len(seg_data) == 0:
+            continue
+        clf = SAND(
             pattern_length=slidingWindow,
             subsequence_length=4 * slidingWindow,
         )
-        clf_test.fit(test_data, overlaping_rate=int(1.5 * slidingWindow))
-        scores_test = MinMaxScaler(feature_range=(0, 1)).fit_transform(clf_test.decision_scores_.reshape(-1, 1)).ravel()
-    else:
-        scores_test = np.array([])
+        clf.fit(seg_data, overlaping_rate=int(1.5 * slidingWindow))
+        scores = MinMaxScaler(feature_range=(0, 1)).fit_transform(clf.decision_scores_.reshape(-1, 1)).ravel()
+        scores_full[seg['start']:seg['end']+1] = scores
 
-    scores_full = np.zeros(len(data_arr))
-    scores_full[train_indices] = scores_train
-    if len(test_indices) > 0:
-        scores_full[test_indices] = scores_test
+        if seg['is_train']:
+            clusters = [c[0] for c in clf.clusters]
+            weights = clf.weights
+            all_clusters.append(clusters)
+            all_weights.append(weights)
 
-    return slidingWindow, scores_full, [c[0] for c in clf_train.clusters], clf_train.weights
+    return slidingWindow, scores_full, all_clusters, all_weights
 
 
 @memory.cache
 def compute_training_set_damp_scores(data_arr, training_set, slidingWindow=None):
-    """
-    DAMP
-    :param data_arr:
-    :param training_set:
-    :param slidingWindow:
-    :return:
-    """
     if slidingWindow is None:
         slidingWindow = find_sand_length(data_arr)
 
-    merged_intervals = merge_intervals(training_set)
-    train_indices = []
-    for interval in merged_intervals:
-        train_indices.extend(range(interval['start'], interval['end'] + 1))
-    train_indices = np.array(sorted(set(train_indices)), dtype=int)
+    N = len(data_arr)
+    is_train = np.zeros(N, dtype=bool)
+    for seg in training_set:
+        is_train[seg['start']:seg['end']+1] = True
 
-    all_indices = np.arange(len(data_arr))
-    test_indices = np.setdiff1d(all_indices, train_indices)
+    segments = []
+    idx = 0
+    while idx < N:
+        start_idx = idx
+        curr_flag = is_train[idx]
+        while idx + 1 < N and is_train[idx + 1] == curr_flag:
+            idx += 1
+        end_idx = idx
+        segments.append({'start': start_idx, 'end': end_idx, 'is_train': curr_flag})
+        idx += 1
 
-    train_data = data_arr[train_indices]
-    clf_train = DAMP(m=slidingWindow, sp_index=slidingWindow + 1)
-    clf_train.fit(train_data)
-    raw_scores_train = clf_train.decision_scores_
+    scores_full = np.zeros(N)
 
-    pad = (slidingWindow - 1) // 2
-    if raw_scores_train.size > 0:
-        damp_scores_train = MinMaxScaler(feature_range=(0, 1)) \
-            .fit_transform(raw_scores_train.reshape(-1, 1)) \
-            .ravel()
-        left_pad_train = np.full(pad, damp_scores_train[0])
-        right_pad_train = np.full(pad, damp_scores_train[-1])
-        padded_scores_train = np.concatenate([left_pad_train, damp_scores_train, right_pad_train])
-    else:
-        padded_scores_train = np.zeros(len(train_data))
+    for seg in segments:
+        seg_data = data_arr[seg['start']:seg['end']+1]
+        if len(seg_data) == 0:
+            continue
+        clf = DAMP(m=slidingWindow, sp_index=slidingWindow + 1)
+        clf.fit(seg_data)
+        raw_scores = clf.decision_scores_
+        pad = (slidingWindow - 1) // 2
 
-    motif_start = raw_scores_train[slidingWindow + 1:].argmin()
-    motif = raw_scores_train[motif_start: motif_start + slidingWindow]
-
-    if test_indices.size > 0:
-        test_data = data_arr[test_indices]
-        clf_test = DAMP(m=slidingWindow, sp_index=slidingWindow + 1)
-        clf_test.fit(test_data)
-        raw_scores_test = clf_test.decision_scores_
-
-        if raw_scores_train.size > 0:
-            damp_scores_test = MinMaxScaler(feature_range=(0, 1)) \
-                .fit_transform(raw_scores_test.reshape(-1, 1)) \
-                .ravel()
-            left_pad_test = np.full(pad, damp_scores_test[0])
-            right_pad_test = np.full(pad, damp_scores_test[-1])
-            padded_scores_test = np.concatenate([left_pad_test, damp_scores_test, right_pad_test])
+        if raw_scores.size > 0:
+            damp_scores = MinMaxScaler(feature_range=(0, 1)).fit_transform(raw_scores.reshape(-1, 1)).ravel()
+            left_pad = np.full(pad, damp_scores[0])
+            right_pad = np.full(pad, damp_scores[-1])
+            padded_scores = np.concatenate([left_pad, damp_scores, right_pad])
+            if padded_scores.shape[0] > seg_data.shape[0]:
+                padded_scores = padded_scores[:seg_data.shape[0]]
+            elif padded_scores.shape[0] < seg_data.shape[0]:
+                padded_scores = np.pad(padded_scores, (0, seg_data.shape[0] - padded_scores.shape[0]), 'edge')
         else:
-            padded_scores_test = np.zeros(len(test_data))
-    else:
-        padded_scores_test = np.array([])
+            padded_scores = np.zeros(len(seg_data))
 
-    scores_full = np.zeros(len(data_arr))
-    if train_indices.size > 0:
-        assert padded_scores_train.shape[0] == train_indices.shape[0]
-        scores_full[train_indices] = padded_scores_train
+        scores_full[seg['start']:seg['end']+1] = padded_scores
 
-    if test_indices.size > 0:
-        assert padded_scores_test.shape[0] == test_indices.shape[0]
-        scores_full[test_indices] = padded_scores_test
-
-    return slidingWindow, scores_full, [motif.tolist()], [1]
+    return slidingWindow, scores_full, [], []
 
 
+@memory.cache
+def compute_training_set_andri_scores(data_arr, training_set, param_list):
+    slidingWindow = param_list.get('slidingWindow', find_sand_length(data_arr))
+    max_W = param_list.get('max_W', 20)
+    min_size = param_list.get('min_size', 0.01)
 
+    N = len(data_arr)
+    is_train = np.zeros(N, dtype=bool)
+    for seg in training_set:
+        is_train[seg['start']:seg['end'] + 1] = True
+
+    segments = []
+    idx = 0
+    while idx < N:
+        start_idx = idx
+        curr_flag = is_train[idx]
+        while idx + 1 < N and is_train[idx + 1] == curr_flag:
+            idx += 1
+        end_idx = idx
+        segments.append({'start': start_idx, 'end': end_idx})
+        idx += 1
+
+    all_scores = np.zeros(N)
+    all_nm_indices = np.zeros(N, dtype=int)
+    all_NM_subseqs = []
+    nm_offset = 0
+
+    for seg in segments:
+        seg_data = data_arr[seg['start']:seg['end'] + 1]
+        clf = A2D2(
+            slidingWindow, 'zero-mean', linkage_method='ward', th_reverse=5, kadj=1,
+            nm_len=2, overlap=0, max_W=max_W, eta=1
+        )
+        clf.fit(
+            seg_data,
+            y=None,
+            online=False,
+            training=True,
+            training_len=len(seg_data),
+            stump=False,
+            stepwise=True,
+            min_size=min_size
+        )
+        score = clf.scores
+        score = MinMaxScaler(feature_range=(0, 1)).fit_transform(score.reshape(-1, 1)).ravel()
+        if len(score) < len(seg_data):
+            score = np.append(score, np.ones(len(seg_data) - len(score)) * np.mean(score))
+        all_scores[seg['start']:seg['end'] + 1] = score
+
+        NM_subseqs = [nm.subseq.tolist() for nm in clf.NMs]
+        all_NM_subseqs.extend(NM_subseqs)
+        cl_s = clf.cl_s
+
+        if len(cl_s) > len(seg_data):
+            cl_s = cl_s[:len(seg_data)]
+        elif len(cl_s) < len(seg_data):
+            cl_s = np.append(cl_s, np.ones(len(seg_data) - len(cl_s)) * cl_s[-1])
+        all_nm_indices[seg['start']:seg['end'] + 1] = cl_s + nm_offset
+        nm_offset += len(clf.NMs)
+
+    return slidingWindow, all_scores, all_nm_indices, all_NM_subseqs
+
+
+def andri_scoring(data, flags, training_set, param_list):
+    warnings.simplefilter("ignore", pd.errors.PerformanceWarning)
+    flags = np.array(flags)
+    flags[np.isin(flags, [1, 3])] = 1
+
+    data_arr = np.array(data, dtype=float).flatten()
+    pattern_length, global_scores, nm_indices, nms = compute_training_set_andri_scores(data_arr, training_set,
+                                                                                       param_list)
+
+    return {
+        'global_scores': global_scores.tolist(),
+        'pattern_length': int(pattern_length),
+        'flags': flags.astype(int).tolist(),
+        'nms': nms,
+        'nm_indices': nm_indices.tolist()
+    }
 
 
 def merge_intervals(intervals):
@@ -350,12 +399,10 @@ def fit_user_labels(scores, flags, training_set):
             print(f"  mean: {means[idx]:.4f}, std: {stds[idx]:.4f}, weight: {weights[idx]:.4f}")
         return 1, [-1], means.tolist(), stds.tolist(), std_all_active, weights.tolist()
 
-
     for idx in active_idx:
         print(f"  mean: {means[idx]:.4f}, std: {stds[idx]:.4f}, weight: {weights[idx]:.4f}")
 
     print(f"所有有效成分内的点的标准差: {std_all_active:.4e}")
-
 
     active_sorted = sorted(active_idx, key=lambda idx: means[idx])
 
@@ -489,6 +536,5 @@ def fit_user_labels(scores, flags, training_set):
         if uncertain_idxs:
             print(f"后验 ∈ 筛得 {len(uncertain_idxs)} 个待判定样本")
             return 0, uncertain_idxs, means.tolist(), stds.tolist(), std_all_active, weights.tolist()
-
 
     return 1, [-1], means.tolist(), stds.tolist(), std_all_active, weights.tolist()

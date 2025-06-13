@@ -114,7 +114,6 @@
             <h4 class="text-dark fw-bold mb-1 fs-1">Select Training Set(s):</h4>
         </div>
 
-
         <!-- Add/Finish Training Set Btn Section -->
         <div class="d-flex gap-1 mt-2 p-1 w-100 d-none" id="addFinishTrainingSetSection">
             <button id="addTrainingSet" class="btn btn-outline-primary w-50 fs-4"
@@ -137,11 +136,11 @@
         <!-- Cancel Mislabeled Points Title -->
         <div class="p-3 bg-light border rounded small text-center d-flex flex-column justify-content-center d-none"
              id="cancelMislabeledPointsSection">
-            <h4 class="text-dark fw-bold mb-1 fs-1">Are These
-                <span style="color: rgba(255, 160, 0, 1); font-weight: bold;">X </span>Anomalies?</h4>
+            <h4 id="testPhaseTitle" class="text-dark fw-bold mb-1 fs-1">Evaluating Candidates</h4>
         </div>
 
 
+        <!-- Yes or No -->
         <div class="d-flex gap-1 mt-2 p-1 w-100 d-none" id="yesOrNoButtonsSection">
             <button id="markAsAnomaliesBtn" class="btn btn-danger fs-3 w-50">Yes, Anomalies
             </button>
@@ -169,46 +168,6 @@
             </div>
         </div>
 
-
-        <!-- Stats section3 -->
-        <div id="datasetStats3" class="card p-2 mt-1 d-none w-100">
-            <div class="card-body p-1">
-                <div class="d-flex justify-content-between fs-5">
-                    <div>
-                        <strong>Total Data:</strong>
-                        <span class="text-success" id="totalRecords3">0</span>
-                    </div>
-                    <div id="trainingSetRecordsText3">
-                        <strong>TrainingSet:</strong>
-                        <span class="text-primary" id="trainingSetRecords3">0</span>
-                    </div>
-                    <div id="userMarkedAnomalies">
-                        <strong>Marked Anomalies:</strong>
-                        <span class="text-danger" id="userMarkedAnomaliesNum">0</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Stats section4: last sigma, new sigma -->
-        <div id="datasetStats4" class="card p-2 mb-1 mt-1 d-none w-100 flex-wrap: wrap">
-            <div class="card-body p-1 fs-5">
-                <div class="d-flex justify-content-between ">
-                    <div style="min-width: 40px; padding-right: 12px;">
-                        <strong>Previous Anomaly Std. Dev.:</strong>
-                        <span class="text-danger" id="lastSigma">0</span>
-                    </div>
-                    <div id="newSigmaDiv" style="min-width: 40px; padding-right: 12px;">
-                        <strong>Current Anomaly Std. Dev.:</strong>
-                        <span class="text-danger" id="currentSigma">0</span>
-                    </div>
-                    <div id="pointsToReviewDiv" style="min-width: 40px;">
-                        <strong>Points to Review:</strong>
-                        <span style="color: rgba(255, 160, 0, 1)" id="pointsToReview">0</span>
-                    </div>
-                </div>
-            </div>
-        </div>
 
         <!-- Show Training Set Range Section -->
         <div id="trainDatasetStats" class="card p-1 mt-2 d-none w-100">
@@ -260,37 +219,78 @@
             </button>
         </div>
 
-        <!-- Auto Detect Again and Show Advanced Stats Section -->
-        <div class="p-2 bg-light border border-dark rounded shadow-sm mt-1 text-center d-none"
-             id="showAdvancedStatsSection">
-
-            <button id="autoDetectAgainBtn" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal"
-                    data-bs-target="#autoDetectAnomaliesModal">Auto Detect Again
-            </button>
-            <button id="finalTestBtn" class="btn btn-warning btn-sm" data-bs-toggle="modal"
-                    data-bs-target="#evaluationModal">
-                Test on Testing Sets
-            </button>
-        </div>
-
-
-        <!-- Show Normal Pattern -->
-        <div id="showNormalPatternArea" class="mt-3 mb-1 w-100 showNormalPattern d-none" style="height: 30vh;">
-            <div style="flex: 0 0 8%; display: flex; align-items: center; justify-content: center;">
-                <h5 class="m-0 fw-bold" id="normalPatternChartTitle">Most Similar User-Marked Anomalies</h5>
-            </div>
-            <div id="normalPatternChart" style="flex: 0 0 92%; width: 100%;"></div>
-        </div>
-
-
         <!-- Anomaly Score Distribution Histogram -->
         <div id="anomalyScoreDistributionHistogramSection" class="mt-3 mb-1 w-100 showNormalPattern d-none"
-             style="height: 30vh;">
+             style="height: 40vh;">
             <div style="flex: 0 0 8%; display: flex; align-items: center; justify-content: center;">
-                <h5 class="m-0 fw-bold" id="normalPatternChartTitle">Anomaly Score Distribution Histogram</h5>
+                <h5 class="m-0 fw-bold" id="normalPatternChartTitle">Anomaly Score Distribution</h5>
             </div>
             <div id="anomalyScoreDistributionHistogramChart" style="flex: 0 0 92%; width: 100%;"></div>
         </div>
+
+
+        <!-- Pie Chart -->
+        <div id="tpFpPieChartSection" class="mt-3 mb-1 w-100 showNormalPattern d-none"
+             style="height: 30vh;">
+            <div style="flex: 0 0 8%; display: flex; align-items: center; justify-content: center;">
+                <h5 class="m-0 fw-bold" id="normalPatternChartTitle">
+                    Marked Anomalies:
+                    <span id="markAnomaliesNum" class="text-danger">100</span>
+                </h5>
+            </div>
+            <div id="tpFpPieChart" style="flex: 0 0 92%; width: 100%;"></div>
+        </div>
+
+
+        <!-- Results Table-->
+        <table id="resultTableSection"
+               class="table table-bordered table-hover mt-4 align-middle text-center fs-4 d-none"
+               style="background: white;">
+            <thead class="table-light">
+            <tr class="fs-3">
+                <th style="width: 22%;">Algorithm</th>
+                <th style="width: 26%;">Precision</th>
+                <th style="width: 26%;">Recall</th>
+                <th style="width: 26%;">F1-Score</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+                <th>NORMA</th>
+                <td id="norma-precision">-</td>
+                <td id="norma-recall">-</td>
+                <td id="norma-f1">-</td>
+            </tr>
+            <tr>
+                <th>SAND</th>
+                <td id="sand-precision">-</td>
+                <td id="sand-recall">-</td>
+                <td id="sand-f1">-</td>
+            </tr>
+            <tr>
+                <th>DAMP</th>
+                <td id="damp-precision">-</td>
+                <td id="damp-recall">-</td>
+                <td id="damp-f1">-</td>
+            </tr>
+            <tr>
+                <th>Andri</th>
+                <td id="andri-precision">-</td>
+                <td id="andri-recall">-</td>
+                <td id="andri-f1">-</td>
+            </tr>
+            </tbody>
+        </table>
+
+        <!-- Test Again -->
+        <div class="d-flex gap-1 mt-2 p-1 w-100 d-none" id="testAgainSection">
+            <button id="testAgainButton" class="btn btn-success fs-4 w-60">Test With Other Algorithm
+            </button>
+        </div>
+
+
+        <button id="aaa" onclick="enableTestPhaseForAndri()">aaa</button>
+
 
     </div>
 
@@ -326,10 +326,9 @@
                         <select class="form-select fs-4" id="exampleDataSelect">
                             <option value="" selected disabled>Please select</option>
                             <option value="MBA_ECG805_data.arff">MBA ECG805</option>
-                            <option value="MBA_ECG805_data.arff">Demo Dataset1</option>
+                            <option value="ECG_Test.arff">ECG Test</option>
                             <option value="MBA_ECG805_data.arff">Demo Dataset2</option>
                             <option value="MBA_ECG805_data.arff">Demo Dataset3</option>
-                            <option value="MBA_ECG805_data.arff">Demo Dataset4</option>
                         </select>
                     </div>
                     <div class="d-flex align-items-center mb-3 mt-1">
@@ -337,9 +336,27 @@
                         <span class="px-2 fs-4">or</span>
                         <hr class="flex-grow-1">
                     </div>
+                    <!-- Anomaly proportion input -->
                     <div class="mb-3">
                         <label for="localDataInput" class="form-label fs-4">Upload Local File</label>
                         <input class="form-control" type="file" id="localDataInput" accept=".arff,.csv">
+                    </div>
+
+                    <hr class="flex-grow-1">
+                    <div class="mb-3">
+                        <label for="anomalyProportionInput" class="form-label fs-4">
+                            Estimated Anomaly Proportion
+                            <span class="text-muted fs-6">(Optional, e.g. 0.05 for 5%)</span>
+                        </label>
+                        <input
+                                type="number"
+                                min="0"
+                                max="1"
+                                step="0.01"
+                                class="form-control fs-4"
+                                id="anomalyProportionInput"
+                                placeholder="Enter a value between 0 and 1">
+
                         <button type="button" class="btn btn-primary w-100 mt-3 fs-4" id="uploadDatasetBtn">Start
                         </button>
                     </div>
@@ -368,6 +385,7 @@
                         <option value="0" selected>NormA</option>
                         <option value="1">SAND</option>
                         <option value="2">DAMP</option>
+                        <option value="3">AnDri</option>
                     </select>
                 </div>
 
@@ -428,9 +446,31 @@
                     </div>
                 </div>
 
+                <div id="andriSection" class="p-3 rounded border mb-3 d-none  fs-5">
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input" type="checkbox" id="autoAndri" checked>
+                        <label class="form-check-label" for="autoAndri">Default Parameters</label>
+                    </div>
+                    <div class="mb-2">
+                        <label for="andriSlidingWindow" class="form-label">Sliding Window</label>
+                        <input type="number" class="form-control" id="andriSlidingWindow"
+                               placeholder="Enter Sliding Window" disabled>
+                    </div>
+                    <div class="mb-2">
+                        <label for="andriMinSize" class="form-label">Min Size</label>
+                        <input type="number" class="form-control" id="andriMinSize" placeholder="Enter Min Size"
+                               disabled>
+                    </div>
+                    <div>
+                        <label for="andriMaxW" class="form-label">Max W</label>
+                        <input type="number" class="form-control" id="andriMaxW" placeholder="Enter max W" disabled>
+                    </div>
+                </div>
+
 
                 <!-- Description Text -->
-                <p class="mb-2 text-center fs-5">The model automatically find other anomalies based on your labeled
+                <p class="mb-2 text-center fs-5" id="autoDetectFooter">The model automatically find other anomalies
+                    based on your labeled
                     anomalies.</p>
                 <!-- Auto-Tune Button at Bottom -->
                 <div class="text-center mt-3">
@@ -521,7 +561,7 @@
 <script>
     // flags: 0: unknown, 1: anomaly, 2: normal, 3: possible mislabeled points, 4: anomaly marked by system
     // 5: unmarked anomalies
-    let point_dic = {
+    const point_dic = {
         99: {'size': 12, 'symbol': 'circle', 'color': 'rgba(123, 31, 162, 1)'}, // for unmark (function addAnomaly layer)
         0: {'size': 4, 'symbol': 'circle', 'color': 'rgba(100, 149, 237, 0.8)'},
         1: {'size': 11, 'symbol': 'circle', 'color': 'rgba(255, 30, 0, 0.9)'},
@@ -538,16 +578,78 @@
             , 'color': 'rgba(255, 160, 0, 1)'
         },
         4: {
-            'size': 15, 'symbol': 'image://data:image/svg+xml;utf8,' +
-                '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32">' +
-                '<line x1="3" y1="3" x2="29" y2="29" ' +
-                'stroke="rgba(255,120,110,1)" stroke-width="8" stroke-linecap="round"/>' +
-                '<line x1="29" y1="3" x2="3" y2="29" ' +
-                'stroke="rgba(255,120,110,1)" stroke-width="8" stroke-linecap="round"/>' +
-                '</svg>', 'color': 'rgba(255, 120, 110, 1)'
+            'size': 15, 'symbol': 'diamond', 'color': 'rgba(175, 0, 255, 1)'
         },
-        5: {'size': 15, 'symbol': 'diamond', 'color': 'rgba(123, 31, 162, 1)'},
+        5: {'size': 15, 'symbol': 'diamond', 'color': 'rgba(175, 0, 255, 1)'},
+        6: {
+            'size': 1, 'symbol': 'image://data:image/svg+xml;utf8,' +
+                '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">' +
+                '<line x1="6" y1="6" x2="34" y2="34" stroke="%23FFA000" stroke-width="10" stroke-linecap="round"/>' +
+                '<line x1="34" y1="6" x2="6" y2="34" stroke="%23FFA000" stroke-width="10" stroke-linecap="round"/>' +
+                '</svg>', 'color': 'rgba(255, 160, 0, 1)'
+        },
+        7: {
+            'size': 1, 'symbol': "image://data:image/svg+xml;utf8," +
+                "<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'>" +
+                "<polygon points='20,4 36,20 20,36 4,20' fill='rgba(175,0,255,1)' />" +
+                "</svg>"
+            , 'color': 'rgba(175, 0, 255, 1)'
+        },
+        8: {'size': 3, 'symbol': 'circle', 'color': 'rgba(255, 30, 0, 0.9)'},
     }
+
+
+    const andriBackgroundColor = [
+        'rgba(87, 204, 153, 0.5)',
+        'rgba(243, 156, 18, 0.5)',
+        'rgba(41, 128, 185, 0.5)',
+        'rgba(199, 0, 57, 0.5)',
+        'rgba(225, 112, 85, 0.5)',
+        'rgba(241, 196, 15, 0.5)',
+        'rgba(149, 165, 166, 0.5)',
+        'rgba(52, 152, 219, 0.5)',
+        'rgba(52, 73, 94, 0.5)',
+        'rgba(87, 101, 116, 0.5)',
+        'rgba(238, 82, 83, 0.5)',
+        'rgba(192, 57, 43, 0.5)',
+        'rgba(183, 21, 64, 0.5)',
+        'rgba(61, 61, 61, 0.5)',
+        'rgba(243, 104, 224, 0.5)',
+        'rgba(52, 232, 158, 0.5)',
+        'rgba(255, 159, 243, 0.5)',
+        'rgba(22, 160, 133, 0.5)',
+        'rgba(190, 46, 221, 0.5)',
+        'rgba(155, 89, 182, 0.5)',
+        'rgba(255, 71, 87, 0.5)',
+        'rgba(243, 104, 224, 0.5)',
+        'rgba(214, 48, 49, 0.5)',
+        'rgba(211, 84, 0, 0.5)',
+        'rgba(39, 174, 96, 0.5)',
+        'rgba(24, 220, 255, 0.5)',
+        'rgba(255, 195, 18, 0.5)',
+        'rgba(37, 204, 247, 0.5)',
+        'rgba(44, 62, 80, 0.5)',
+        'rgba(13, 152, 186, 0.5)',
+        'rgba(30, 39, 46, 0.5)',
+        'rgba(231, 76, 60, 0.5)',
+        'rgba(63, 232, 252, 0.5)',
+        'rgba(0, 168, 255, 0.5)',
+        'rgba(243, 104, 224, 0.5)',
+        'rgba(255, 221, 89, 0.5)',
+        'rgba(46, 204, 113, 0.5)',
+        'rgba(72, 52, 212, 0.5)',
+        'rgba(21, 39, 46, 0.5)',
+        'rgba(214, 48, 49, 0.5)',
+        'rgba(127, 140, 141, 0.5)',
+        'rgba(225, 112, 85, 0.5)',
+        'rgba(236, 240, 241, 0.5)',
+        'rgba(45, 152, 218, 0.5)',
+        'rgba(30, 144, 255, 0.5)',
+        'rgba(106, 176, 76, 0.5)',
+        'rgba(254, 202, 87, 0.5)',
+        'rgba(119, 140, 163, 0.5)',
+
+    ];
 
 
     // 0: NormA, 1: SAND, 2: DAMP, 3: Andri
@@ -555,7 +657,7 @@
         0: {'detect_url': "{{ url_for('detect_anomalies.norm_a') }}", 'name': 'NormA'},
         1: {'detect_url': "{{ url_for('detect_anomalies.sand') }}", 'name': 'SAND'},
         2: {'detect_url': "{{ url_for('detect_anomalies.damp') }}", 'name': 'DAMP'},
-        3: {'detect_url': "{{ url_for('detect_anomalies.sand') }}", 'name': 'Andri'},
+        3: {'detect_url': "{{ url_for('detect_anomalies.andri') }}", 'name': 'Andri'},
     };
 
 
@@ -574,21 +676,20 @@
 
 
     // NormA Params:
-    let norm_a_threshold = 0;
     let norm_a_normal_patterns, norm_a_weights;
-    let norm_a_normal_pattern_chart = null;
     const normal_pattern_chart_backDom = document.getElementById("normalPatternChart");
     let norm_a_intersect = [];
+
+    // andri
+    let points_nm_map = [];
 
 
     // anomaly score distribution histogram
     const anomalyScoreHistogramChartDom = document.getElementById('anomalyScoreDistributionHistogramChart');
     let anomalyScoreHistogramChart = null;
 
-
-    // evaluation modal
-    const evaModal = new bootstrap.Modal(document.getElementById('evaluationModal'));
-
+    const tpFpPieChartDom = document.getElementById('tpFpPieChart');
+    let tpFpPieChart = null;
 
     // temp flags
     let flags_for_canceling_marked_labels = [];
@@ -599,12 +700,10 @@
     // global variables
     let final_mu = 0;
     let final_sigma = 0;
-    let currentAlgorithmName = 'NormA';
     let training_set_10th = 0; // point with score lower than this maybe mislabeled
-    let lastSigma = '-';
-    let currentSigma = '-';
     let pointsForReview = 0;
     let lastStep = -1;
+    let currentThreshold = 0;
     let process_step = -1;
     let trainingSet; // indexes of training set points
     let anomalyMus = [];
@@ -613,6 +712,9 @@
     let flagsCopy;
     let responseRounds = 0;
     let copied = false;
+    let testingSet;
+    let algoSelect = 0;
+    let testPhase = false;
 
 
     function initCharts() {
@@ -641,22 +743,22 @@
                     animation: false,
                     progressive: 5000,
                     progressiveThreshold: 15000,
-                    sampling: 'average',
+                    sampling: 'lttb',
                     symbol: params => {
                         const idx = params.dataIndex;
                         const f = (flags[idx] != null ? flags[idx] : 0);
-                        return point_dic[f].symbol;
+                        return point_dic[0].symbol;
                     },
                     symbolSize: params => {
                         const idx = params.dataIndex;
                         const f = (flags[idx] != null ? flags[idx] : 0);
-                        return point_dic[f].size;
+                        return point_dic[0].size;
                     },
                     itemStyle: {
                         color: params => {
                             const idx = params.dataIndex;
                             const f = (flags[idx] != null ? flags[idx] : 0);
-                            return point_dic[f].color;
+                            return point_dic[0].color;
                         }
                     }
                 },
@@ -792,9 +894,9 @@
         window.addEventListener("resize", () => {
             chart1.resize();
             chart2.resize();
-            if (norm_a_normal_pattern_chart) norm_a_normal_pattern_chart.resize();
             if (anomalyScoreChart) anomalyScoreChart.resize();
             if (anomalyScoreHistogramChart) anomalyScoreHistogramChart.resize();
+            if (tpFpPieChart) tpFpPieChart.resize();
         });
 
 
@@ -866,7 +968,6 @@
                 break;
 
             case 2:
-                alert(222)
                 start = Math.max(0, index - 500);
                 end = Math.min(fullData.length - 1, index + 500);
 
@@ -1008,7 +1109,8 @@
                     data: seriesData,
                 },
             ],
-        });
+
+        }, {lazyUpdate: true});
     }
 
 
@@ -1029,7 +1131,8 @@
                 trigger: "axis",
                 formatter: params => {
                     let p = params[0];
-                    return `Index: ${p.axisValue}<br/>Anomaly Score: ${p.data}.toFixed(3)}`;
+                    let p0 = p.data.toFixed(3);
+                    return `Index: ${p.axisValue}<br/>Anomaly Score: ${p0}}`;
                 }
             },
             series: [{
@@ -1052,6 +1155,314 @@
         };
 
         anomalyScoreChart.setOption(option);
+    }
+
+
+    function initAnomalyScoreChartAndri() {
+        anomalyScoreChart = echarts.init(document.getElementById("scoreChart"));
+        let anomalyScores = trainingSet.map(idx => globalScores[idx]);
+
+        let markAreaList = [];
+        let lastIdx = 0;
+        while (lastIdx < points_nm_map.length) {
+            let start = lastIdx;
+            let patternIdx = points_nm_map[lastIdx];
+            while (
+                lastIdx + 1 < points_nm_map.length &&
+                points_nm_map[lastIdx + 1] === patternIdx
+                ) {
+                lastIdx++;
+            }
+            let end = lastIdx;
+            markAreaList.push({
+                patternIdx: patternIdx,
+                start: start,
+                end: end
+            });
+            lastIdx++;
+        }
+
+        let series = [{
+            type: 'line',
+            data: anomalyScores,
+            symbol: point_dic[0].symbol,
+            symbolSize: point_dic[0].size,
+            itemStyle: point_dic[0].color
+        }];
+
+        markAreaList.forEach(area => {
+            let color = andriBackgroundColor[area.patternIdx];
+            series.push({
+                type: 'line',
+                data: [],
+                markArea: {
+                    itemStyle: {color: color},
+                    data: [[
+                        {xAxis: area.start},
+                        {xAxis: area.end}
+                    ]]
+                },
+                silent: true
+            });
+        });
+
+        let option = {
+            renderer: 'canvas',
+            devicePixelRatio: window.devicePixelRatio,
+            xAxis: {type: 'category', data: trainingSet, name: "index"},
+            yAxis: {
+                type: 'value',
+                name: "Anomaly Score"
+            },
+            dataZoom: [{type: "inside"}],
+            tooltip: {
+                trigger: "axis",
+                formatter: params => {
+                    let p = params[0];
+                    let p0 = p.data.toFixed(3);
+                    return `Index: ${p.axisValue}<br/>Anomaly Score: ${p0}`;
+                }
+            },
+            series: series
+        };
+
+        anomalyScoreChart.setOption(option);
+
+
+        let option1 = chart1.getOption();
+        let retainedSeries = option1.series.filter(s => !s.id || s.id !== 'bgMarkArea');
+
+        markAreaList.forEach(area => {
+            let color = andriBackgroundColor[area.patternIdx];
+            retainedSeries.push({
+                type: 'line',
+                data: [],
+                markArea: {
+                    itemStyle: {color: color},
+                    data: [[
+                        {xAxis: area.start},
+                        {xAxis: area.end}
+                    ]]
+                },
+                silent: true
+            });
+        });
+
+        chart1.setOption({
+            series: [
+                ...retainedSeries,
+            ]
+        });
+    }
+
+
+    function renderTestSetScoreChartAndri() {
+        const trainSet = new Set(trainingSet);
+        let testSetIndices = [];
+        for (let i = 0; i < fullData.length; i++) {
+            if (!trainSet.has(i)) testSetIndices.push(i);
+        }
+
+        let testSetScores = testSetIndices.map(idx => globalScores[idx]);
+
+        let markAreaList = [];
+        let lastIdx = 0;
+        while (lastIdx < testSetIndices.length) {
+            let start = lastIdx;
+            let patternIdx = points_nm_map[testSetIndices[lastIdx]];
+            while (
+                lastIdx + 1 < testSetIndices.length &&
+                points_nm_map[testSetIndices[lastIdx + 1]] === patternIdx
+                ) {
+                lastIdx++;
+            }
+            let end = lastIdx;
+            markAreaList.push({
+                patternIdx: patternIdx,
+                start: start,
+                end: end
+            });
+            lastIdx++;
+        }
+
+
+        let lineSeries = {
+            type: 'line',
+            data: testSetScores,
+            showSymbol: false,
+            lineStyle: {opacity: 1},
+            itemStyle: point_dic[0].color
+        };
+
+
+        let anomalyPoints = testSetScores
+            .map((score, i) => score > currentThreshold ? [i, score] : null)
+            .filter(d => d);
+        let scatterSeries = {
+            type: 'scatter',
+            data: anomalyPoints,
+            symbolSize: 2,
+            itemStyle: {color: point_dic[8].color},
+            z: 100
+        };
+
+
+        let series = [lineSeries, scatterSeries];
+
+
+        markAreaList.forEach(area => {
+            let color = andriBackgroundColor[area.patternIdx];
+            series.push({
+                type: 'line',
+                data: [],
+                markArea: {
+                    itemStyle: {color: color},
+                    data: [[
+                        {xAxis: area.start},
+                        {xAxis: area.end}
+                    ]]
+                },
+                silent: true
+            });
+        });
+
+        let option = {
+            title: {
+                text: 'Anomaly Score',
+                left: "center",
+                textStyle: {
+                    fontSize: 36,
+                    fontWeight: 'bold',
+                }
+            },
+            renderer: 'canvas',
+            devicePixelRatio: window.devicePixelRatio,
+            xAxis: {
+                type: 'category',
+                data: testSetIndices,
+                name: "index"
+            },
+            yAxis: {
+                type: 'value',
+                name: "Anomaly Score"
+            },
+            dataZoom: [{type: "inside"}],
+            tooltip: {
+                trigger: "axis",
+                formatter: params => {
+                    let p = params[0];
+                    let p0 = p.data.toFixed(3);
+                    return `Index: ${p.axisValue}<br/>Anomaly Score: ${p0}`;
+                }
+            },
+            series: series
+        };
+
+        anomalyScoreChart.setOption(option, true);
+
+        return scatterSeries
+    }
+
+
+    function renderTestSetScoreChartOnChart1Andri() {
+        const trainSet = new Set(trainingSet);
+        let testSetIndices = [];
+        for (let i = 0; i < fullData.length; i++) {
+            if (!trainSet.has(i)) testSetIndices.push(i);
+        }
+
+        let testSetValues = testSetIndices.map(idx => fullData[idx]);
+
+        let markAreaList = [];
+        let lastIdx = 0;
+        while (lastIdx < testSetIndices.length) {
+            let start = lastIdx;
+            let patternIdx = points_nm_map[testSetIndices[lastIdx]];
+            while (
+                lastIdx + 1 < testSetIndices.length &&
+                points_nm_map[testSetIndices[lastIdx + 1]] === patternIdx
+                ) {
+                lastIdx++;
+            }
+            let end = lastIdx;
+            markAreaList.push({patternIdx, start, end});
+            lastIdx++;
+        }
+
+        let lineSeries = {
+            type: 'line',
+            data: testSetValues,
+            showSymbol: false,
+            lineStyle: {opacity: 1},
+            itemStyle: point_dic[0].color
+        };
+
+        const anomalyPoints = testSetIndices
+            .map((idx, i) =>
+                globalScores[idx] > currentThreshold
+                    ? [i, fullData[idx]]
+                    : null
+            )
+            .filter(d => d !== null);
+
+        let scatterSeries = {
+            type: 'scatter',
+            data: anomalyPoints,
+            symbolSize: 2,
+            itemStyle: {color: point_dic[8].color},
+            z: 100
+        };
+
+        let series = [lineSeries, scatterSeries];
+        markAreaList.forEach(area => {
+            let color = andriBackgroundColor[area.patternIdx];
+            series.push({
+                type: 'line',
+                data: [],
+                markArea: {
+                    silent: true,
+                    itemStyle: {color},
+                    data: [[
+                        {xAxis: area.start},
+                        {xAxis: area.end}
+                    ]]
+                }
+            });
+        });
+
+        let option = {
+            title: {
+                text: 'Time Series (Test Set) with Anomalies',
+                left: 'center',
+                textStyle:{
+                    fontSize: 36,
+                    fontWeight: 'bold',
+                }
+            },
+            renderer: 'canvas',
+            devicePixelRatio: window.devicePixelRatio,
+            xAxis: {
+                type: 'category',
+                data: testSetIndices,
+                name: 'Index'
+            },
+            yAxis: {
+                type: 'value',
+                name: 'Value'
+            },
+            dataZoom: [{type: 'inside'}],
+            tooltip: {
+                trigger: 'axis',
+                formatter: params => {
+                    const p = params.find(p => p.data != null);
+                    const origIdx = testSetIndices[p.dataIndex];
+                    return `Original Index: ${origIdx}<br/>Value: ${p.data.toFixed(3)}`;
+                }
+            },
+            series
+        };
+
+        chart1.setOption(option, true);
     }
 
 
@@ -1262,12 +1673,10 @@
     // show the overall data and current training dataset
     function enableTotalDataNum() {
         document.getElementById('totalRecords').textContent = fullData.length.toString();
-        document.getElementById('totalRecords3').textContent = fullData.length.toString();
         document.getElementById('datasetStats').classList.remove('d-none');
         document.getElementById('trainDatasetStats').classList.remove('d-none');
         document.getElementById('anomalyCount').innerText = '0';
         document.getElementById('trainingSetRecords').innerText = '0';
-        document.getElementById('trainingSetRecords3').innerText = '0';
     }
 
     // hide 'finish select training sets' btn
@@ -1297,34 +1706,6 @@
     }
 
 
-    function setChart2Title(xColor = 'rgba(255,160,0,1)') {
-        const chart2Sect = document.getElementById('chart2');
-        let title = chart2Sect.querySelector('.chart2-title');
-        if (!title) {
-            title = document.createElement('div');
-            title.className = 'chart2-title';
-            title.innerHTML = `<span class="chart2-x" style="color:${xColor}">X</span>：To be Reviewed`;
-            chart2Sect.insertBefore(title, chart2Sect.firstChild);
-        } else {
-            const xSpan = title.querySelector('.chart2-x');
-            if (xSpan) xSpan.style.color = xColor;
-        }
-    }
-
-
-    function hideLowerPanelSections() {
-        document.getElementById("threeMethods").classList.add("d-none");
-        document.getElementById("autoDetectSection").classList.add("d-none");
-    }
-
-
-    function setButtonsDisabled(disabled) {
-        document.querySelectorAll('.action-btn').forEach(btn => {
-            btn.disabled = disabled;
-        });
-    }
-
-
     // update anomalies numbers
     function updateAnomaliesNum() {
         const totalInBrush = fullData.reduce((count, _, i) => count + (isInBrushAreas(i) ? 1 : 0), 0);
@@ -1338,7 +1719,6 @@
         const percentage = totalInBrush > 0 ? ((countAnomalies / totalInBrush) * 100).toFixed(4) + '%' : '0.0000%';
 
         document.getElementById('anomalyCount').textContent = `${countAnomalies} (${percentage})`;
-        document.getElementById('userMarkedAnomaliesNum').textContent = `${countAnomalies} (${percentage})`;
     }
 
 
@@ -1400,10 +1780,12 @@
         const symbolSizeArray = anomalies_indexes_list.map(flag => point_dic[flag]?.size);
         const colorArray = anomalies_indexes_list.map(flag => point_dic[flag]?.color);
 
-        function updateChart(chart, visibleFlags) {
+        function updateChart(chart, visibleFlags, name = 'Candidates') {
             chart.setOption({
                 series: [
                     {
+                        name,
+                        sampling: 'lttb',
                         data: seriesData,
                         symbol: (params) => {
                             const idx = params[0];
@@ -1427,9 +1809,8 @@
             });
         }
 
-        updateChart(chart1, visibleFlagsChart1);
-        updateChart(chart2, visibleFlagsChart2);
 
+        updateChart(chart2, visibleFlagsChart2);
         updateAnomaliesNum();
     }
 
@@ -1475,7 +1856,6 @@
         const scatterSeries = {
             id: 'anomalyScatter',
             type: 'scatter',
-            sampling: 'average',
             data: anomalyData,
             symbol: point_dic[point_num].symbol,
             symbolSize: point_dic[point_num].size,
@@ -1543,7 +1923,7 @@
 
     // toggle sequential mode
     function toggleSequentialMode(buttonId, flagType, fillColor, strokeColor, stack,
-                                  chart1Flags = [0, 1, 2, 3, 4], chart2Flags = [0, 1, 2, 3, 4]
+                                  chart1Flags = [0], chart2Flags = [0, 1, 2, 3, 4]
     ) {
         let button = document.getElementById(buttonId);
         sequentialMode = false;
@@ -1649,29 +2029,16 @@
                         }
 
                         if (currentPhase === 'MarkAnomaliesPhase') {
-                            addAnomalyLayer(chart1, fullData, flags, flagType);
-                            markAnomalies(flags, [], chart2Flags);
+                            markAnomalies(flags, [0], chart2Flags);
                         }
 
-                        if (hasAtLeast100UserMarkedPointsInTrainingSet()){
+                        if (hasAtLeast100UserMarkedPointsInTrainingSet()) {
                             document.getElementById('autoDetectBtn').click();
                         }
+                        alert(111)
 
-                        break;
+                        addAnomalyLayer(chart1, fullData, flags, 1);
 
-                    case 0:
-                        let changedPoints0 = [];
-                        for (let i = startCoord; i <= endCoord; i++) {
-                            if (i >= 0 && i < fullData.length && (flags[i] === 3 || flags[i] === 1)) {
-                                changedPoints0.push({index: i, prevFlag: flags[i]});
-                                flags[i] = flagType;
-                            }
-                        }
-                        if (changedPoints0.length > 0) {
-                            stack.push(changedPoints0);
-                        }
-
-                        markAnomalies(flags, chart1Flags, chart2Flags);
                         break;
                 }
 
@@ -1720,10 +2087,11 @@
         document.getElementById('finshSelectTrainingSet').classList.remove('d-none');
         document.getElementById('addFinishTrainingSetSection').classList.remove('d-none');
         document.getElementById('trainingSetRecordsText').classList.remove('d-none');
+        document.getElementById("threeMethods").classList.add("d-none");
+        document.getElementById("autoDetectSection").classList.add("d-none");
         enableTotalDataNum();
         initChart1();
         updateChart2();
-        hideLowerPanelSections();
         document.getElementById('anomalyCountText').classList.add('d-none');
         document.getElementById('markAnomaliesTitle').classList.add('d-none');
 
@@ -1759,8 +2127,6 @@
         document.getElementById('trainDatasetStats').classList.add('d-none');
         document.getElementById('trainingSetRecords').innerText =
             brushAreas.reduce((sum, area) => sum + (area.end - area.start + 1), 0);
-        document.getElementById('trainingSetRecords3').innerText =
-            brushAreas.reduce((sum, area) => sum + (area.end - area.start + 1), 0);
         document.getElementById('trainingSetRecordsText').classList.remove('d-none');
         document.getElementById('anomalyCountText').classList.remove('d-none');
         renameChart2Title('Detailed Data View');
@@ -1794,12 +2160,10 @@
         document.getElementById('threeMethods').classList.add('d-none');
         document.getElementById('datasetStats').classList.add('d-none');
         document.getElementById('autoDetectSection').classList.add('d-none');
-        // document.getElementById('datasetStats3').classList.remove('d-none');
-        document.getElementById('showNormalPatternArea').classList.remove('d-none');
-        document.getElementById('anomalyScoreDistributionHistogramSection').classList.remove('d-none');
         document.getElementById('cancelMislabeledPointsSection').classList.remove('d-none');
+        document.getElementById('anomalyScoreDistributionHistogramSection').classList.remove('d-none');
+        document.getElementById('tpFpPieChartSection').classList.remove('d-none');
         document.getElementById('yesOrNoButtonsSection').classList.remove('d-none');
-        document.getElementById('datasetStats4').classList.remove('d-none');
         clickRangeScale = 4;
 
         document.getElementById('autoDetectSection').classList.remove('mt-4');
@@ -1821,6 +2185,8 @@
 
         initAnomalyScoreHistogramChart();
         initAnomalyScoreChart();
+        renderTpFpPieChart();
+        tpFpPieChart.resize();
         chart2.resize();
         anomalyScoreChart.resize();
         chart1.resize();
@@ -1838,7 +2204,13 @@
         });
 
         chart2.setOption({
-            title: {show: false},
+            title: {
+                text: "Candidate Points",
+                textStyle: {
+                    fontSize: 30,
+                    fontWeight: 'bold',
+                },
+            },
             grid: {left: '5%', right: '5%', top: '20%', bottom: '2%', containLabel: true},
         })
 
@@ -1857,16 +2229,131 @@
     }
 
 
+    function enableRevisePotentialMislabeledAnomaliesAndriPhase() {
+        document.getElementById('scoreChart').classList.remove('d-none');
+        document.getElementById('threeMethods').classList.add('d-none');
+        document.getElementById('datasetStats').classList.add('d-none');
+        document.getElementById('autoDetectSection').classList.add('d-none');
+        document.getElementById('tpFpPieChartSection').classList.remove('d-none');
+        document.getElementById('cancelMislabeledPointsSection').classList.remove('d-none');
+        document.getElementById('anomalyScoreDistributionHistogramSection').classList.remove('d-none');
+        document.getElementById('yesOrNoButtonsSection').classList.remove('d-none');
+        clickRangeScale = 4;
+
+        document.getElementById('autoDetectSection').classList.remove('mt-4');
+        cancelSequentialMode();
+
+        // Change Instruction Content:
+        document.getElementById('markAnomaliesTitle').classList.add('d-none');
+        renameChart1Title('Full Data Overview', '');
+
+        const chartsWrapper = document.querySelector('.charts-wrapper');
+        const scoreChart = document.getElementById('scoreChart');
+        const chart1Dom = document.getElementById('chart1');
+        const chart2Dom = document.getElementById('chart2');
+
+        chartsWrapper.appendChild(chart2Dom);
+        chartsWrapper.appendChild(chart1Dom);
+        chartsWrapper.appendChild(scoreChart);
+
+        initAnomalyScoreHistogramChart();
+        initAnomalyScoreChartAndri();
+        renderTpFpPieChart();
+        tpFpPieChart.resize();
+        chart2.resize();
+        anomalyScoreChart.resize();
+        chart1.resize();
+
+
+        chart2.resize();
+        anomalyScoreChart.resize();
+        chart1.resize();
+
+        chart1.setOption({
+            title: {
+                text: 'Time Series'
+            },
+            dataZoom: [{type: "inside"}],
+            series: [
+                {
+                    sampling: 'lttb',
+                },
+            ]
+        });
+
+        chart2.setOption({
+            title: {
+                text: "Candidate Points",
+                textStyle: {
+                    fontSize: 30,
+                    fontWeight: 'bold',
+                },
+            },
+            grid: {left: '5%', right: '5%', top: '20%', bottom: '2%', containLabel: true},
+        })
+
+        anomalyScoreChart.setOption({
+            title: {
+                text: 'Anomaly Score',
+                left: "center",
+                textStyle: {
+                    fontSize: 36,
+                    fontWeight: 'bold',
+                }
+            },
+            grid: {left: '5%', right: '5%', top: '15%', bottom: '2%', containLabel: true},
+        });
+
+    }
+
+
+    function enableTestPhase() {
+
+    }
+
+
+    function enableTestPhaseForAndri() {
+        document.getElementById('testPhaseTitle').innerText = 'Testing Result';
+        document.getElementById('yesOrNoButtonsSection').classList.add('d-none');
+        document.getElementById('tpFpPieChartSection').classList.add('d-none');
+        document.getElementById('chart2').classList.add('d-none');
+        document.getElementById('anomalyScoreDistributionHistogramSection').classList.add('d-none');
+        document.getElementById('aaa').classList.add('d-none');
+        document.getElementById('resultTableSection').classList.remove('d-none');
+        document.getElementById('autoDetectAnomaliesModalLabel').innerText = 'Calculate Anomaly Scores';
+        document.getElementById("autoDetectFooter").classList.add('d-none');
+        document.getElementById('testAgainSection').classList.remove('d-none');
+        document.getElementById('optimizeHyperparametersBtn').innerText = 'Calculate';
+        const result = globalScores.map(score => score > 0.33 ? 8 : 0);
+
+        const count8 = result.filter(x => x === 8).length;
+        const ratio8 = count8 / result.length;
+        console.log("8的比例：", ratio8);
+
+        testPhase = true;
+
+        finalTest();
+
+
+        renderTestSetScoreChartAndri();
+        renderTestSetScoreChartOnChart1Andri();
+
+    }
+
+
     document.getElementById('algorithmSelect').addEventListener('change', function () {
         document.getElementById('normaSection').classList.add('d-none');
         document.getElementById('sandSection').classList.add('d-none');
         document.getElementById('dampSection').classList.add('d-none');
+        document.getElementById('andriSection').classList.add('d-none');
         if (this.value === '0') {
             document.getElementById('normaSection').classList.remove('d-none');
         } else if (this.value === '1') {
             document.getElementById('sandSection').classList.remove('d-none');
         } else if (this.value === '2') {
             document.getElementById('dampSection').classList.remove('d-none');
+        } else if (this.value === '3') {
+            document.getElementById('andriSection').classList.remove('d-none');
         }
     });
 
@@ -1888,6 +2375,14 @@
     });
 
 
+    document.getElementById('autoAndri').addEventListener('change', function () {
+        let disabled = this.checked;
+        document.getElementById('andriMaxW').disabled = disabled;
+        document.getElementById('andriMinSize').disabled = disabled;
+        document.getElementById('andriSlidingWindow').disabled = disabled;
+    })
+
+
     // =========================↓
     // auto-detect
     document.getElementById('optimizeHyperparametersBtn').addEventListener('click', function () {
@@ -1895,13 +2390,6 @@
         //    alert('Please Mark at Least 100 Points');
         //    return;
         //}
-
-        if (!copied) {
-            flagsCopy = flags.slice();
-            copied = true;
-        } else {
-            flags = flagsCopy.slice();
-        }
 
         let patternLength;
         const autoDetectCheckbox = document.getElementById('autoDetectPatternLength');
@@ -1936,9 +2424,9 @@
             }
         }, 7000);
 
-        const algoSelect = document.getElementById('algorithmSelect').value;
+
+        algoSelect = document.getElementById('algorithmSelect').value;
         const url = algorithms_dict[algoSelect]['detect_url'];
-        currentAlgorithmName = algorithms_dict[algoSelect]['name'];
 
 
         const body = {
@@ -1971,19 +2459,47 @@
                 progressBar.style.width = '100%';
                 progressBar.innerText = '100%';
 
-                setTimeout(() => {
-                    loadingModal.hide();
-                    norm_a_l = data.pattern_length;
-                    flags = data.flags;
-                    globalScores = data.global_scores;
-                    training_set_10th = getTopPercentileValue(10);
-                    norm_a_normal_patterns = data.nms;
-                    norm_a_weights = data.weights;
-                    clickRangeScale = 4;
-                    enableRevisePotentialMislabeledAnomaliesPhase();
-                    initNormPatternChart();
-                    fitUserLabels();
-                }, 500);
+                if (!testPhase) {
+                    if (algoSelect !== '3') {
+                        setTimeout(() => {
+                            loadingModal.hide();
+                            norm_a_l = data.pattern_length;
+                            flags = data.flags;
+                            globalScores = data.global_scores;
+                            training_set_10th = getTopPercentileValue(10);
+                            norm_a_normal_patterns = data.nms;
+                            norm_a_weights = data.weights;
+                            clickRangeScale = 4;
+                            initTpFpPieChart();
+                            enableRevisePotentialMislabeledAnomaliesPhase();
+                            fitUserLabels();
+                        }, 500);
+                    } else {
+                        setTimeout(() => {
+                            loadingModal.hide();
+                            norm_a_l = data.pattern_length;
+                            flags = data.flags;
+                            globalScores = data.global_scores;
+                            training_set_10th = getTopPercentileValue(10);
+                            norm_a_normal_patterns = data.nms;
+                            points_nm_map = data.nm_indices;
+                            clickRangeScale = 4;
+                            initTpFpPieChart();
+                            enableRevisePotentialMislabeledAnomaliesAndriPhase();
+                            fitUserLabels();
+                        }, 500);
+                    }
+                } else {
+                    setTimeout(() => {
+                        loadingModal.hide();
+                        globalScores = data.global_scores;
+                        finalTest();
+                    }, 500);
+
+
+                }
+
+
             })
             .catch(error => {
                 clearInterval(interval);
@@ -2022,76 +2538,62 @@
             .then(data => {
                     const stable = data.stable;
                     if (stable === 1) {
-                        document.getElementById('finalTestBtn').click();
-                        final_mu = data.mu;
-                        final_sigma = data.sigma;
+                        final_mu = data.mu[0];
+                        final_sigma = data.sigma[0];
+
                     } else {
                         anomalyMus = data.mu;
                         anomalySigmas = data.sigma;
                         anomalyWeights = data.weights;
-
-
                         let minIndex = isPossibleMislabeledPointsExist(training_set_10th);
 
-                        renderAnomalyScoreHistogramChart();
-
                         // exist mislabeled points
-                        if (minIndex !== -1 && process_step === -1) {
+                        if (minIndex !== -1) {
                             process_step = 0;
                             checkPossibleMislabeledPoints(minIndex);
-                            // update sigma
-                            lastSigma = currentSigma;
-                            document.getElementById('lastSigma').innerText = currentSigma;
-                            const anomalyScores = globalScores.filter((_, idx) => flags[idx] === 1);
-                            const mean = anomalyScores.reduce((a, b) => a + b, 0) / anomalyScores.length;
-                            const variance = anomalyScores.reduce((sum, score) => sum + Math.pow(score - mean, 2), 0) / anomalyScores.length;
-                            currentSigma = Math.sqrt(variance).toFixed(5);
-                            document.getElementById('currentSigma').innerText = currentSigma;
-                            document.getElementById('pointsToReview').innerText = norm_a_intersect.length.toString();
                             return
                         }
 
                         process_step = 1;
-
-
                         norm_a_intersect = data.intersect;
-                        currentSigma = data.active_std.toFixed(5);
                         findNormalPointsClosestToIntersectionIndex(norm_a_intersect, norm_a_intersect[0]);
                     }
                 }
             )
             .catch(error => {
-
+                console.log(error);
             });
     }
 
 
     function findNormalPointsClosestToIntersectionIndex(l, minIndex) {
-        setChart2Title('rgba(255, 120, 110, 1)');
+        flags_for_marking_more_labels = [];
+
+        renderAnomalyScoreHistogramChart(l, 'rgba(175, 0, 255, 1)');
+        renderTpFpPieChart();
+
+
         l.forEach(idx => {
             flags_for_marking_more_labels[idx] = 4;
         });
 
-        const zoomRange = Math.round(4.5 * norm_a_l);
+        const zoomRange = Math.round(2.5 * norm_a_l);
+
+        let rangeStart = Math.max(0, minIndex - zoomRange);
+        let rangeEnd = Math.min(fullData.length - 1, minIndex + zoomRange);
+
 
         chart2.dispatchAction({
             type: "dataZoom",
-            startValue: Math.max(0, minIndex - zoomRange),
-            endValue: Math.min(fullData.length - 1, minIndex + zoomRange)
+            startValue: rangeStart,
+            endValue: rangeEnd
         });
-
-        document.querySelector('#cancelMislabeledPointsSection span').style.color = 'rgba(255, 120, 110, 1)';
 
         markAnomalies(flags_for_marking_more_labels, [], [4]);
         addAnomalyLayer(chart1, fullData, flags_for_marking_more_labels, 4);
         addAnomalyLayer(anomalyScoreChart, globalScores, flags_for_marking_more_labels, 4);
 
-        const left = Math.max(0, minIndex - 10);
-        const right = Math.min(fullData.length - 1, minIndex + 10);
-        const f = Array.from({length: right - left + 1}, (_, k) => left + k);
-        document.getElementById('normalPatternChartTitle').innerText = 'Most Similar User-Marked Anomaly Pattern';
-
-        findSimilarAnomalyPattern(f);
+        // findDifferentNormalPatterns(rangeStart, rangeStart + 1.5 * norm_a_l, rangeStart, rangeEnd, point_dic[7]['symbol']);
 
     }
 
@@ -2142,16 +2644,12 @@
 
     // check possible mislabeled points
     function checkPossibleMislabeledPoints(minIndex) {
-        setChart2Title();
         norm_a_intersect = [];
-        const zoomRange = Math.round(4.5 * norm_a_l);
-
-        const min_bound = Math.floor(Math.max(0, minIndex - 0.5 * norm_a_l));
-        const max_bound = Math.ceil(Math.min(flags.length - 1, minIndex + 0.5 * norm_a_l));
+        flags_for_canceling_marked_labels = [];
+        const zoomRange = Math.round(2.5 * norm_a_l);
 
         flags_for_canceling_marked_labels = flags.map((flag, idx) => {
-            if (flag === 1 && idx >= min_bound && idx <= max_bound &&
-                globalScores[idx] < training_set_10th &&
+            if (flag === 1 && globalScores[idx] < training_set_10th &&
                 globalScores[idx] <= 1.2 * globalScores[minIndex]) {
                 norm_a_intersect.push(idx);
                 return 3;
@@ -2160,7 +2658,8 @@
             }
         });
 
-        document.querySelector('#cancelMislabeledPointsSection span').style.color = 'rgba(255, 160, 0, 1)';
+        renderAnomalyScoreHistogramChart(norm_a_intersect);
+        renderTpFpPieChart();
 
         chart2.dispatchAction({
             type: "dataZoom",
@@ -2172,91 +2671,85 @@
         addAnomalyLayer(anomalyScoreChart, globalScores, flags_for_canceling_marked_labels, 3);
         addAnomalyLayer(chart1, fullData, flags_for_canceling_marked_labels, 3);
 
-        document.getElementById('normalPatternChartTitle').innerText = 'Most Similar Normal Pattern';
-        ;
 
-        findSimilarNormalPatterns(Math.min(...norm_a_intersect), Math.max(...norm_a_intersect));
+        const [minIdx, maxIdx] = getContiguousMinMaxAroundIndex(norm_a_intersect, minIndex);
 
-
+        findSimilarNormalPatterns(minIdx, maxIdx, Math.max(0, minIndex - zoomRange),
+            Math.min(fullData.length - 1, minIndex + zoomRange));
     }
 
 
-    // init norm pattern chart
-    function initNormPatternChart() {
-        if (!norm_a_normal_pattern_chart) {
-            norm_a_normal_pattern_chart = echarts.init(normal_pattern_chart_backDom, null, {
-                renderer: 'canvas',
-                devicePixelRatio: window.devicePixelRatio
-            });
-        } else {
-            norm_a_normal_pattern_chart.resize();
+    function renderNormalPatternOnChart2(nm, startIndex, nmAlignIdx, rangeStart, rangeEnd, svg) {
+        const option = chart2.getOption();
+        const retainedSeries = option.series.filter(s => s.id !== 'normalPattern');
+        const nmLen = nm.length;
+        const bgLineData = [];
+
+        for (let i = rangeStart; i <= rangeEnd; i++) {
+            let delta = i - startIndex;
+            let nmIdx = ((nmAlignIdx + delta) % nmLen + nmLen) % nmLen;
+            bgLineData.push([i, nm[nmIdx]]);
         }
-    }
 
-    // update and render norm chart
-    function renderNormalPatternChart(c, np, highlightStartIdx = null, highlightEndIdx = null, highlightColor = null) {
-        const xData = np.map((_, i) => i);
-        let pieces;
-
-        np = np.map((val, i) => {
-            if (
-                highlightStartIdx !== null &&
-                highlightEndIdx !== null &&
-                i >= highlightStartIdx &&
-                i <= highlightEndIdx
-            ) {
-                return {
-                    value: val,
-                    symbol: 'circle',
+        chart2.setOption({
+            legend: {
+                show: true,
+                orient: 'vertical',
+                data: [
+                    {
+                        name: 'Normal Pattern',
+                        icon: 'rect',
+                    },
+                    {
+                        name: 'Candidates',
+                        icon: svg
+                    }
+                ],
+                right: '10%',
+                textStyle: {
+                    fontSize: 16,
+                    fontWeight: 'bold',
                 }
-            }
-            return {
-                value: val,
-                symbol: 'circle',
-            }
+            },
+            series: [
+                ...retainedSeries,
+                {
+                    id: 'normalPattern',
+                    name: 'Normal Pattern',
+                    type: 'line',
+                    symbol: 'none',
+                    data: bgLineData,
+                    showSymbol: false,
+                    smooth: true,
+                    lineStyle: {
+                        color: 'rgba(110, 245, 120, 0.7)',
+                        width: 15
+                    },
+                    z: 0
+                }
+            ]
         });
-
-        if (highlightStartIdx !== null && highlightEndIdx !== null && highlightEndIdx >= highlightStartIdx) {
-            pieces = [
-                {lte: highlightStartIdx - 1, color: '#5470C6'},
-                {gt: highlightStartIdx - 1, lte: highlightEndIdx - 1, color: highlightColor},
-                {gt: highlightEndIdx - 1, color: '#5470C6'}
-            ];
-        } else {
-            pieces = [{color: '#5470C6'}];
-        }
-        let option = {
-            title: {show: false},
-            xAxis: {type: "category", data: xData, name: "index"},
-            yAxis: {type: "value", name: "Value"},
-            dataZoom: [{type: "inside"}],
-            tooltip: {
-                trigger: "axis",
-                formatter: params => {
-                    const p = params[0];
-                    const value = (typeof p.value === 'number') ? p.value.toFixed(3) : p.value;
-                    return `Index: ${p.dataIndex}<br/>Value: ${value}`;
-                }
-            },
-            grid: {left: '2%', right: '10%', top: '10%', bottom: '2%', containLabel: true},
-            emphasis: {disabled: true},
-            visualMap: {
-                show: false,
-                dimension: 0,
-                pieces: pieces
-            },
-            series: [{
-                type: "line",
-                data: np,
-                smooth: true,
-                showAllSymbol: true
-            }]
-        };
-        c.setOption(option);
     }
 
 
     // utils ============================ ↓
+    function isPossibleMislabeledPointsExist(lowBound) {
+        let minScore = Infinity;
+        let minIndex = -1;
+
+
+        for (let i = 0; i < flags.length; i++) {
+            if (flags[i] === 1 && globalScores[i] < lowBound) {
+                if (globalScores[i] < minScore) {
+                    minScore = globalScores[i];
+                    minIndex = i;
+                }
+            }
+        }
+        return minIndex;
+    }
+
+
     function getMu() {
         const brushScores = globalScores.filter((_, i) => isInBrushAreas(i));
         return brushScores.length > 0
@@ -2291,7 +2784,19 @@
     }
 
 
-    function findSimilarNormalPatterns(startIndex, endIndex) {
+    function getAnomalyMeanMinusSigma() {
+        const scores = globalScores.filter((_, idx) => flags[idx] === 1);
+        if (scores.length === 0) return 0;
+
+        const mean = scores.reduce((a, b) => a + b, 0) / scores.length;
+        const variance = scores.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / scores.length;
+        const sigma = Math.sqrt(variance);
+
+        return mean - sigma;
+    }
+
+
+    function findSimilarNormalPatterns(startIndex, endIndex, rangeStart, rangeEnd) {
         const url = "{{ url_for('detect_anomalies.find_similar_pattern') }}";
         const subArray = fullData.slice(startIndex, endIndex + 1);
 
@@ -2318,22 +2823,26 @@
             })
             .then(data => {
                 let nm = data.nm;
-                let start = data.loc
-                renderNormalPatternChart(norm_a_normal_pattern_chart, nm, start, start + norm_a_intersect.length, 'rgba(255, 160, 0, 1)');
+                let start = data.loc;
+                renderNormalPatternOnChart2(nm, startIndex, start, rangeStart, rangeEnd, point_dic[6]['symbol']);
+
             })
             .catch(error => {
+                console.log(error)
             });
 
     }
 
 
-    function findSimilarAnomalyPattern(f) {
+    function findDifferentNormalPatterns(startIndex, endIndex, rangeStart, rangeEnd) {
         const url = "{{ url_for('detect_anomalies.find_similar_anomaly_pattern') }}";
+        const subArray = fullData.slice(startIndex, endIndex + 1);
+
+        let maxIdx = norm_a_weights.indexOf(Math.max(...norm_a_weights));
 
         const body = {
-            original_seq: f,
-            fullData: fullData,
-            flags: flags
+            original_seq: subArray,
+            norm_a_normal_patterns: [norm_a_normal_patterns[maxIdx]],
         }
 
         fetch(url, {
@@ -2353,67 +2862,99 @@
                 return response.json();
             })
             .then(data => {
-                let seq = data.seq;
-                const targetLen = 7 * norm_a_l;
-                const seqLen = seq.length;
+                let nm = data.nm;
+                let start = data.loc;
+                renderNormalPatternOnChart2(nm, startIndex, start, rangeStart, rangeEnd, point_dic[7]['symbol']);
 
-                let paddedSeq;
-                if (seqLen >= targetLen) {
-                    const extra = seqLen - targetLen;
-                    const left = Math.floor(extra / 2);
-                    paddedSeq = seq.slice(left, left + targetLen);
-                } else {
-                    const needPad = targetLen - seqLen;
-                    const leftPad = Math.floor(needPad / 2);
-                    const rightPad = needPad - leftPad;
-
-                    const seqStart = seq[0];
-                    const seqEnd = seq[seq.length - 1];
-
-                    paddedSeq = [];
-                    for (let i = leftPad; i > 0; i--) {
-                        paddedSeq.push(seqStart - i);
-                    }
-                    paddedSeq = paddedSeq.concat(seq);
-                    for (let i = 1; i <= rightPad; i++) {
-                        paddedSeq.push(seqEnd + i);
-                    }
-                }
-
-                const highlightStartIdx = paddedSeq.indexOf(seq[0]);
-                const highlightEndIdx = paddedSeq.lastIndexOf(seq[seq.length - 1]) + 1;
-
-                let values = paddedSeq.map(idx => fullData[idx]);
-
-                renderNormalPatternChart(
-                    norm_a_normal_pattern_chart,
-                    values,
-                    highlightStartIdx,
-                    highlightEndIdx,
-                    'rgba(255, 120, 110, 1)'
-                );
             })
-
             .catch(error => {
                 console.log(error);
             });
+
     }
 
 
-    function isPossibleMislabeledPointsExist(lowBound) {
-        let minScore = Infinity;
-        let minIndex = -1;
+    function getContiguousMinMaxAroundIndex(arr, centerIdx) {
+        if (!arr.length) return [null, null];
+        arr = arr.slice().sort((a, b) => a - b);
 
-        for (let i = 0; i < flags.length; i++) {
-            if (flags[i] === 1 && globalScores[i] < lowBound) {
-                if (globalScores[i] < minScore) {
-                    minScore = globalScores[i];
-                    minIndex = i;
-                }
+        let closestIdx = 0;
+        for (let i = 0; i < arr.length; i++) {
+            if (Math.abs(arr[i] - centerIdx) < Math.abs(arr[closestIdx] - centerIdx)) {
+                closestIdx = i;
             }
         }
-        return minIndex;
+
+        let left = closestIdx;
+        let right = closestIdx;
+        while (left > 0 && arr[left] - arr[left - 1] === 1) {
+            left--;
+        }
+        while (right < arr.length - 1 && arr[right + 1] - arr[right] === 1) {
+            right++;
+        }
+
+        return [arr[left], arr[right]];
     }
+
+
+    function getClosestWithinRange(arr, centerIdx, maxDistance = norm_a_l) {
+        const half = Math.floor(maxDistance / 2);
+        const leftLimit = centerIdx - half;
+        const rightLimit = centerIdx + half;
+        const candidates = arr.filter(idx => idx >= leftLimit && idx <= rightLimit);
+
+        if (candidates.length > 1) {
+            return [Math.min(...candidates), Math.max(...candidates)];
+        } else {
+            return [leftLimit, rightLimit];
+        }
+    }
+
+
+    function setChart2Title(txt) {
+        const chart2Sect = document.getElementById('chart2');
+        let title = chart2Sect.querySelector('.chart2-title');
+        if (!title) {
+            title = document.createElement('div');
+            title.className = 'chart2-title';
+            title.innerHTML = txt;
+            chart2Sect.insertBefore(title, chart2Sect.firstChild);
+        }
+    }
+
+
+    function finalTest() {
+        currentThreshold = getAnomalyMeanMinusSigma();
+
+        let TP = 0, FP = 0, FN = 0;
+        for (let i = 0; i < baseline.length; i++) {
+            if (isInBrushAreas(i)) continue;
+            let pred = globalScores[i] > currentThreshold ? 1 : 0;
+            let trueLabel = baseline[i];
+            if (pred === 1 && trueLabel === 1) TP++;
+            if (pred === 1 && trueLabel === 0) FP++;
+            if (pred === 0 && trueLabel === 1) FN++;
+        }
+        let precision = TP + FP === 0 ? 0 : TP / (TP + FP);
+        let recall = TP + FN === 0 ? 0 : TP / (TP + FN);
+        let f1 = precision + recall === 0 ? 0 : 2 * precision * recall / (precision + recall);
+
+        let algoIds = [
+            ["norma-precision", "norma-recall", "norma-f1"],
+            ["sand-precision", "sand-recall", "sand-f1"],
+            ["damp-precision", "damp-recall", "damp-f1"],
+            ["andri-precision", "andri-recall", "andri-f1"]
+        ];
+        let [precId, recallId, f1Id] = algoIds[algoSelect];
+
+        document.getElementById(precId).innerText = precision.toFixed(3);
+        document.getElementById(recallId).innerText = recall.toFixed(3);
+        document.getElementById(f1Id).innerText = f1.toFixed(3);
+
+        document.getElementById("resultTableSection").classList.remove("d-none");
+    }
+
 
     // utils ============================ ↑
 
@@ -2431,133 +2972,236 @@
     }
 
 
-    function renderAnomalyScoreHistogramChart() {
-        const anomalyScores = globalScores.filter((_, idx) => flags[idx] === 1);
+    function renderAnomalyScoreHistogramChart(intersects = [], color = 'rgba(255, 160, 0, 1)') {
+        const flag1_indices_and_scores = [];
+        flags.forEach((flag, idx) => {
+            if (flag === 1 && globalScores[idx] < 0.33) {
+                flag1_indices_and_scores.push([idx, globalScores[idx]]);
+            }
+        });
+// 现在 flag1_indices_and_scores 是 [index, score] 的二维数组
+// 例如 [[3, 0.82], [12, 0.13], ...]
+        console.log(flag1_indices_and_scores);
 
-        if (anomalyScores.length === 0) {
-            anomalyScoreHistogramChart.clear();
-            anomalyScoreHistogramChart.setOption({
-                title: {text: 'No anomalies detected', left: 'center'},
-                xAxis: {show: false},
-                yAxis: {show: false},
-                series: []
-            });
-            return;
-        }
 
-        const minScore = 0;
-        const maxScore = 1;
+        const anomalyScores = [], extraScores = [];
+        const usedSet = new Set(intersects);
+        intersects.forEach(idx => extraScores.push(globalScores[idx]));
+        globalScores.forEach((score, idx) => {
+            if (flags[idx] === 1 && !usedSet.has(idx)) anomalyScores.push(score);
+        });
+        const allScores = anomalyScores.concat(extraScores);
+        const minScore = Math.min(...allScores);
+        const maxScore = Math.max(...allScores);
         const binCount = 50;
         const binSize = (maxScore - minScore) / binCount;
-        const bins = new Array(binCount).fill(0);
-
+        const binsMain = new Array(binCount).fill(0);
+        const binsExtra = new Array(binCount).fill(0);
         anomalyScores.forEach(score => {
-            let binIdx = Math.floor((score - minScore) / binSize);
-            if (binIdx === binCount) binIdx--;
-            bins[binIdx]++;
+            let i = Math.floor((score - minScore) / binSize);
+            if (i === binCount) i--;
+            binsMain[i]++;
         });
-
-        const xLabels = [];
-        const xCenters = [];
+        extraScores.forEach(score => {
+            let i = Math.floor((score - minScore) / binSize);
+            if (i === binCount) i--;
+            binsExtra[i]++;
+        });
+        const xLabels = [], xCenters = [];
         for (let i = 0; i < binCount; i++) {
-            const binCenter = minScore + binSize * (i + 0.5);
-            xLabels.push(binCenter.toFixed(2));
-            xCenters.push(binCenter);
+            const center = minScore + binSize * (i + 0.5);
+            xLabels.push(center.toFixed(2));
+            xCenters.push(center);
         }
 
         function gaussianPDF(x, mu, sigma) {
-            return 1.0 / (sigma * Math.sqrt(2 * Math.PI)) * Math.exp(-0.5 * Math.pow((x - mu) / sigma, 2));
+            return 1 / (sigma * Math.sqrt(2 * Math.PI)) * Math.exp(-0.5 * ((x - mu) / sigma) ** 2);
         }
 
-        let densityVals = xCenters.map(x => {
-            let sum = 0;
-            for (let i = 0; i < anomalyMus.length; ++i) {
-                sum += anomalyWeights[i] * gaussianPDF(x, anomalyMus[i], anomalySigmas[i]);
-            }
-            return sum;
-        });
-
-        const maxBin = Math.max(...bins);
+        const totalWeight = anomalyWeights.reduce((a, b) => a + b, 0);
+        const muGlobal = anomalyMus.reduce((sum, mu, i) => sum + mu * anomalyWeights[i], 0) / totalWeight;
+        const varGlobal = anomalySigmas.reduce((sum, sigma, i) => {
+            const diff = anomalyMus[i] - muGlobal;
+            return sum + anomalyWeights[i] * (sigma * sigma + diff * diff);
+        }, 0) / totalWeight;
+        const sigmaGlobal = Math.sqrt(varGlobal);
+        const densityVals = xCenters.map(x => gaussianPDF(x, muGlobal, sigmaGlobal));
+        const maxBin = Math.max(...binsMain, ...binsExtra);
         const maxDensity = Math.max(...densityVals);
-        const scaleFactor = maxDensity > 0 ? (maxBin / maxDensity) : 1;
-        densityVals = densityVals.map(y => y * scaleFactor);
+        const scale = maxDensity > 0 ? maxBin / maxDensity : 1;
+        const confirmedSeries = {
+            name: 'Confirmed Anomalies',
+            type: 'bar',
+            data: binsMain,
+            barWidth: '100%',
+            barGap: '-100%',
+            barCategoryGap: '0%',
+            itemStyle: {color: 'rgba(255, 120, 110, 0.9)'},
+            emphasis: {itemStyle: {color: 'rgba(255, 120, 110, 0.9)'}}
+        };
 
-        const series = [
-            {
-                type: 'bar',
-                data: bins,
-                itemStyle: {
-                    color: 'rgba(255, 120, 110, 1)',
-                    borderRadius: 3
-                },
-                barWidth: '70%',
-                name: 'Count'
-            },
+        const reviewSeries = {
+            name: 'To be Reviewed',
+            type: 'bar',
+            data: binsExtra,
+            barWidth: '100%',
+            barGap: '-100%',
+            barCategoryGap: '0%',
+            itemStyle: {color},
+            emphasis: {itemStyle: {color}}
+        };
 
-        ];
 
-        for (let i = 0; i < anomalyMus.length; ++i) {
-            const compVals = xCenters.map(
-                x => anomalyWeights[i] * gaussianPDF(x, anomalyMus[i], anomalySigmas[i]) * scaleFactor
-            );
-            series.push({
+        const gaussianSeriesList = [];
+        for (let k = 0; k < anomalyMus.length; ++k) {
+            const mu = anomalyMus[k], sigma = anomalySigmas[k], weight = anomalyWeights[k] / totalWeight;
+            const compDensity = xCenters.map(x => gaussianPDF(x, mu, sigma) * weight);
+            gaussianSeriesList.push({
+                name: `Gaussian ${k + 1}`,
+                symbol: 'none',
                 type: 'line',
-                data: compVals,
-                name: `Component ${i + 1}`,
-                symbol: 'circle',
-                lineStyle: {
-                    width: 2,
-                    type: 'solid',
-                    color: "rgba(255, 0, 0, 0.85)",
-                },
+                data: compDensity.map(d => d * scale),
+                showSymbol: false,
                 smooth: true,
-                z: 8,
-                showSymbol: false
+                lineStyle: {
+                    width: 12,
+                    type: 'line',
+                    color: k === 0 ? 'rgb(18,160,227, 0.4)' : 'rgb(18,160,227, 0.4)'
+                },
+                z: 0
             });
         }
 
 
+        const x = getTopPercentileValue(10);
+        let threshold = getAnomalyMeanMinusSigma();
+        threshold = Math.max(x, threshold);
+        currentThreshold = threshold;
+
+        let thresholdIndex = Math.floor((threshold - minScore) / binSize);
+        if (thresholdIndex < 0) thresholdIndex = 0;
+        if (thresholdIndex >= binCount) thresholdIndex = binCount - 1;
+        const thresholdLabel = xLabels[thresholdIndex];
+        const thresholdName = `Threshold: ${threshold.toFixed(3)}`;
+
+
+        const markLineSeries = {
+            name: thresholdName,
+            type: 'line',
+            data: [],
+            color: 'red',
+            showSymbol: false,
+            markLine: {
+                silent: true,
+                symbol: 'none',
+                lineStyle: {color: 'red', width: 2, type: 'solid'},
+                label: {show: false},
+                data: [{xAxis: thresholdLabel}]
+            }
+        };
+
         const option = {
-            title: {
-                text: 'Anomaly Score Distribution (Flag=1)',
-                left: 'center'
+            legend: {
+                data: [thresholdName,],
+                top: '1%',
+                textStyle: {
+                    color: 'red',
+                    fontSize: 16
+                },
+                icon: 'line'
             },
             tooltip: {
                 trigger: 'axis',
                 axisPointer: {type: 'shadow'},
-                formatter: function (params) {
-                    const idx = params[0].dataIndex;
-                    const binStart = (minScore + idx * binSize).toFixed(3);
-                    const binEnd = (minScore + (idx + 1) * binSize).toFixed(3);
-                    let tip = `Score range: [${binStart}, ${binEnd})<br>Count: ${params[0].value}`;
-                    if (params.length > 1 && params[1].seriesType === 'line') {
-                        tip += `<br>BGMM Density: ${(params[1].value / scaleFactor).toFixed(5)}`;
-                    }
-                    return tip;
+                formatter: params => {
+                    const i = params[0].dataIndex;
+                    const start = (minScore + i * binSize).toFixed(3);
+                    const end = (minScore + (i + 1) * binSize).toFixed(3);
+                    return `Score: [${start}, ${end})<br>Confirmed: ${binsMain[i]}<br>To be Reviewed: ${binsExtra[i]}`;
                 }
             },
-            dataZoom: [{type: "inside"}],
-            grid: {left: '8%', right: '6%', bottom: '12%', top: 50},
-            xAxis: {
-                type: 'category',
-                data: xLabels,
-                nameLocation: 'center',
-                nameGap: 30,
-                axisLabel: {rotate: 45}
-            },
-            yAxis: {
-                type: 'value',
-                name: 'Count'
-            },
-            series: series
-        };
+            dataZoom: [{type: 'inside'}],
+            grid: {left: '2%', right: '10%', top: '10%', bottom: '2%', containLabel: true},
+            xAxis: {type: 'category', data: xLabels, axisLabel: {rotate: 45}},
+            yAxis: {type: 'value', name: 'Frequency'},
+            series: [confirmedSeries, reviewSeries, ...gaussianSeriesList, markLineSeries]
 
+        };
         anomalyScoreHistogramChart.clear();
         anomalyScoreHistogramChart.setOption(option);
     }
 
 
     // anomaly score histogram ============================ ↑
+
+
+    // tp fp pie chart ============================ ↓
+    function initTpFpPieChart() {
+        if (!tpFpPieChart) {
+            tpFpPieChart = echarts.init(tpFpPieChartDom, null, {
+                renderer: 'canvas',
+                devicePixelRatio: window.devicePixelRatio
+            });
+        } else {
+            tpFpPieChart.resize();
+        }
+    }
+
+
+    function renderTpFpPieChart(threshold = currentThreshold) {
+
+        let tp = 0, fp = 0, marked = 0;
+        for (let i = 0; i < flags.length; ++i) {
+            if (flags[i] === 1) {
+                marked++;
+                if (globalScores[i] > threshold) {
+                    tp++;
+                } else {
+                    fp++;
+                }
+            }
+        }
+
+        document.getElementById("markAnomaliesNum").innerText = marked.toString();
+
+        const option = {
+            tooltip: {
+                trigger: 'item',
+                formatter: '{b}: {c} ({d}%)'
+            },
+            legend: {
+                orient: 'vertical',
+                left: 10,
+                data: ['TP', 'FP']
+            },
+            series: [
+                {
+                    name: 'TP/FP',
+                    type: 'pie',
+                    radius: ['50%', '70%'],
+                    avoidLabelOverlap: false,
+                    label: {
+                        show: true,
+                        position: 'outside',
+                        formatter: '{b}: {c}',
+                        fontSize: 16
+                    },
+                    labelLine: {
+                        show: true
+                    },
+                    data: [
+                        {value: tp, name: 'TP', itemStyle: {color: '#28a745'}},
+                        {value: fp, name: 'FP', itemStyle: {color: '#ffe600'}}
+                    ]
+                }
+            ]
+        };
+
+        tpFpPieChart.setOption(option);
+    }
+
+
+    // tp fp pie chart ============================ ↑
 
 
     // final test
@@ -2606,7 +3250,6 @@
         const accuracy = (TP + TN + FP + FN === 0) ? 0 : (TP + TN) / (TP + TN + FP + FN);
 
 
-        document.getElementById('algoName').textContent = currentAlgorithmName;
         document.getElementById('normAPrecisionScore').textContent = precision.toFixed(3);
         document.getElementById('normARecallScore').textContent = recall.toFixed(3);
         document.getElementById('normAf1Score').textContent = f1.toFixed(3);
@@ -2614,6 +3257,11 @@
         document.getElementById('finalThreshold').textContent = threshold.toFixed(3);
 
     }
+
+
+    document.getElementById('testAgainButton').addEventListener('click', function () {
+        document.getElementById('autoDetectBtn').click();
+    });
 
 
 </script>

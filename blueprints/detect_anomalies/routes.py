@@ -1,6 +1,6 @@
 from . import detect_anomalies_bp
 from flask import request, jsonify
-from utils.ml import norm_a_scoring, fit_user_labels, sand_scoring, damp_scoring
+from utils.ml import norm_a_scoring, fit_user_labels, sand_scoring, damp_scoring, andri_scoring
 from utils.find_similar_patterns import find_similar_patterns, find_similar_anomaly_seq
 import os, json
 import numpy as np
@@ -83,9 +83,34 @@ def norm_a():
         return result
 
 
+@detect_anomalies_bp.route('andri', methods=['POST'])
+def andri():
+    cached_result = load_cache(CACHE_FILE_PATH4)
+    if cached_result is not None:
+        return jsonify(cached_result)
+
+    json_data = request.get_json()
+    data = json_data.get('data')
+    flags = json_data.get('flags')
+    training_set = json_data.get('areas')
+    pattern_length = json_data.get('pattern_length')
+
+    if pattern_length == -1:
+        result = andri_scoring(data, flags, training_set, {})
+    else:
+        result = andri_scoring(data, flags, training_set, {})
+
+    if isinstance(result, dict):
+        save_cache(CACHE_FILE_PATH4, result)
+        return jsonify(result)
+    else:
+        return result
+
+
 CACHE_FILE_PATH1 = 'norm_a_cache.json'
 CACHE_FILE_PATH2 = 'sand_cache.json'
 CACHE_FILE_PATH3 = 'damp_cache.json'
+CACHE_FILE_PATH4 = 'andri_cache.json'
 
 
 def load_cache(CACHE_FILE_PATH):
@@ -116,12 +141,10 @@ def find_similar_pattern():
 def find_similar_anomaly_pattern():
     json_data = request.get_json()
     original_data = json_data.get('original_seq')
-    full_data = json_data.get('fullData')
-    flags = json_data.get('flags')
+    nms = json_data.get('norm_a_normal_patterns')
+    seq = find_similar_anomaly_seq(original_data, nms)
 
-    seq = find_similar_anomaly_seq(original_data, flags, full_data)
-    seq = jsonify(seq)
-    return seq
+    return jsonify(seq)
 
 
 
@@ -133,7 +156,6 @@ def norm_a_fit_user_labels():
     training_set = json_data.get('training_set')
 
     stable, intersect, mu, sigma, active_std, weights = fit_user_labels(scores, flags, training_set)
-    print(intersect)
 
     return jsonify({'stable': stable, 'intersect': intersect, 'mu':mu, 'sigma': sigma, 'active_std': active_std,
                     'weights': weights})
