@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-from external.a2d2.util.TSB_AD.metrics import metricor
+from algotithms.andri.metrics import metricor
 import sys
 
 # Return the intervals where there is an anomaly
