@@ -136,15 +136,15 @@
         <!-- Cancel Mislabeled Points Title -->
         <div class="p-3 bg-light border rounded small text-center d-flex flex-column justify-content-center d-none"
              id="cancelMislabeledPointsSection">
-            <h4 id="testPhaseTitle" class="text-dark fw-bold mb-1 fs-1">Evaluating Candidates</h4>
+            <h4 id="testPhaseTitle" class="text-dark fw-bold mb-1 fs-1">Evaluate Candidates</h4>
         </div>
 
 
         <!-- Yes or No -->
         <div class="d-flex gap-1 mt-2 p-1 w-100 d-none" id="yesOrNoButtonsSection">
-            <button id="markAsAnomaliesBtn" class="btn btn-danger fs-3 w-50">Yes, Anomalies
+            <button id="markAsAnomaliesBtn" class="btn btn-danger fs-3 w-50">Anomalies
             </button>
-            <button id="keepPointsBtn" class="btn btn-primary fs-3 w-50">No, Normal Points
+            <button id="keepPointsBtn" class="btn btn-primary fs-3 w-50">Normal Points
             </button>
         </div>
 
@@ -223,7 +223,7 @@
         <div id="anomalyScoreDistributionHistogramSection" class="mt-3 mb-1 w-100 showNormalPattern d-none"
              style="height: 40vh;">
             <div style="flex: 0 0 8%; display: flex; align-items: center; justify-content: center;">
-                <h5 class="m-0 fw-bold" id="normalPatternChartTitle">Anomaly Score Distribution</h5>
+                <h5 class="m-0 fw-bold fs-3" id="normalPatternChartTitle">Anomaly Score Distribution</h5>
             </div>
             <div id="anomalyScoreDistributionHistogramChart" style="flex: 0 0 92%; width: 100%;"></div>
         </div>
@@ -233,7 +233,7 @@
         <div id="tpFpPieChartSection" class="mt-3 mb-1 w-100 showNormalPattern d-none"
              style="height: 30vh;">
             <div style="flex: 0 0 8%; display: flex; align-items: center; justify-content: center;">
-                <h5 class="m-0 fw-bold" id="normalPatternChartTitle">
+                <h5 class="m-0 fw-bold fs-3" id="normalPatternChartTitle">
                     Marked Anomalies:
                     <span id="markAnomaliesNum" class="text-danger">100</span>
                 </h5>
@@ -289,7 +289,7 @@
         </div>
 
 
-        <button id="aaa" onclick="enableTestPhaseForAndri()">aaa</button>
+        <button class="d-none" id="aaa" onclick="enableTestPhaseForAndri()">aaa</button>
 
 
     </div>
@@ -355,7 +355,7 @@
                                 step="0.01"
                                 class="form-control fs-4"
                                 id="anomalyProportionInput"
-                                placeholder="Enter a value between 0 and 1">
+                                placeholder="0.1">
 
                         <button type="button" class="btn btn-primary w-100 mt-3 fs-4" id="uploadDatasetBtn">Start
                         </button>
@@ -578,19 +578,20 @@
             , 'color': 'rgba(255, 160, 0, 1)'
         },
         4: {
-            'size': 15, 'symbol': 'diamond', 'color': 'rgba(175, 0, 255, 1)'
+            'size': 20, 'symbol': 'diamond', 'color': 'rgba(175, 0, 255, 1)'
         },
-        5: {'size': 15, 'symbol': 'diamond', 'color': 'rgba(175, 0, 255, 1)'},
+        5: {'size': 24, 'symbol': 'diamond', 'color': 'rgba(175, 0, 255, 1)'},
         6: {
             'size': 1, 'symbol': 'image://data:image/svg+xml;utf8,' +
-                '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">' +
+                '<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 40 40">' +
                 '<line x1="6" y1="6" x2="34" y2="34" stroke="%23FFA000" stroke-width="10" stroke-linecap="round"/>' +
                 '<line x1="34" y1="6" x2="6" y2="34" stroke="%23FFA000" stroke-width="10" stroke-linecap="round"/>' +
-                '</svg>', 'color': 'rgba(255, 160, 0, 1)'
+                '</svg>'
+            , 'color': 'rgba(255, 160, 0, 1)'
         },
         7: {
             'size': 1, 'symbol': "image://data:image/svg+xml;utf8," +
-                "<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'>" +
+                "<svg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 40 40'>" +
                 "<polygon points='20,4 36,20 20,36 4,20' fill='rgba(175,0,255,1)' />" +
                 "</svg>"
             , 'color': 'rgba(175, 0, 255, 1)'
@@ -731,8 +732,21 @@
                 }
             },
             toolbox: {show: false},
-            xAxis: {type: "value", data: [], name: "index"},
-            yAxis: {type: "value", data: [], name: "Value"},
+            xAxis: {
+                type: "value", data: [], name: "index",
+                axisLabel: {
+                    fontSize: 20,
+                    fontWeight: 'bold',
+                }
+            },
+
+            yAxis: {
+                type: "value", data: [], name: "Value",
+                axisLabel: {
+                    fontSize: 20,
+                    fontWeight: 'bold',
+                }
+            },
             grid: {left: '5%', right: '5%', top: '15%', bottom: '2%', containLabel: true},
             series: [
                 {
@@ -746,18 +760,15 @@
                     sampling: 'lttb',
                     symbol: params => {
                         const idx = params.dataIndex;
-                        const f = (flags[idx] != null ? flags[idx] : 0);
                         return point_dic[0].symbol;
                     },
                     symbolSize: params => {
                         const idx = params.dataIndex;
-                        const f = (flags[idx] != null ? flags[idx] : 0);
                         return point_dic[0].size;
                     },
                     itemStyle: {
                         color: params => {
                             const idx = params.dataIndex;
-                            const f = (flags[idx] != null ? flags[idx] : 0);
                             return point_dic[0].color;
                         }
                     }
@@ -809,21 +820,35 @@
                 },
             },
             toolbox: {show: false},
-            xAxis: {type: "value", data: [], name: "index"},
-            yAxis: {type: "value", data: [], name: "Value"},
+            xAxis: {
+                type: "value", data: [], name: "index", axisLabel: {
+                    fontSize: 20,
+                    fontWeight: 'bold',
+                    formatter: function (value) {
+                        return value % 100 === 0 ? value : '';
+                    }
+                }
+            },
+            yAxis: {
+                type: "value", data: [], name: "Value", axisLabel: {
+                    fontSize: 20,
+                    fontWeight: 'bold',
+                }
+            },
             dataZoom: [{type: "inside"}],
             renderer: "canvas",
             tooltip: {
                 trigger: "axis",
-                formatter: params => {
+                formatter: (params) => {
                     const p = params[0];
-                    const data = params[0].data;
-                    let result = `Index: ${data[0]}<br>Value: ${data[1]}`;
-                    const sum = globalScores.slice(0, 1000).reduce((a, b) => a + b, 0);
-                    if (sum !== 0) {
-                        result += `<br/>Anomaly score: ${globalScores[p.dataIndex].toFixed(3)}`;
+                    let x, y;
+                    if (Array.isArray(p.value)) {
+                        [x, y] = p.value;
+                    } else {
+                        x = p.dataIndex;
+                        y = p.value;
                     }
-                    return result;
+                    return `Index: ${x}<br/>Value: ${y.toFixed(3)}`;
                 }
             },
             grid: {left: '5%', right: '5%', top: '9%', bottom: '2%', containLabel: true},
@@ -1121,10 +1146,23 @@
         let option = {
             renderer: 'canvas',
             devicePixelRatio: window.devicePixelRatio,
-            xAxis: {type: 'category', data: trainingSet, name: "index"},
+            xAxis: {
+                type: 'category',
+                data: trainingSet,
+                name: "index",
+                axisLabel: {
+                    fontSize: 20,
+                    fontWeight: 'bold',
+                }
+
+            },
             yAxis: {
                 type: 'value',
-                name: "Anomaly Score"
+                name: "Anomaly Score",
+                axisLabel: {
+                    fontSize: 20,
+                    fontWeight: 'bold',
+                }
             },
             dataZoom: [{type: "inside"}],
             tooltip: {
@@ -1434,7 +1472,7 @@
             title: {
                 text: 'Time Series (Test Set) with Anomalies',
                 left: 'center',
-                textStyle:{
+                textStyle: {
                     fontSize: 36,
                     fontWeight: 'bold',
                 }
@@ -1735,7 +1773,12 @@
             }
         }
         chart1.setOption({
-            xAxis: {type: 'category', data: xIndices, name: "index"},
+            xAxis: {
+                type: 'category', data: xIndices, name: "index", axisLabel: {
+                    fontSize: 20,
+                    fontWeight: 'bold',
+                }
+            },
             series: [{
                 data: filteredData.map(([i, v]) => v),
                 sampling: 'lttb',
@@ -1752,7 +1795,12 @@
         });
 
         chart2.setOption({
-            xAxis: {type: 'category', data: xIndices, name: "index"},
+            xAxis: {
+                type: 'category', data: xIndices, name: "index", axisLabel: {
+                    fontSize: 20,
+                    fontWeight: 'bold',
+                }
+            },
             series: [{
                 data: filteredData.map(([i, v]) => v),
                 markArea: {
@@ -2035,7 +2083,6 @@
                         if (hasAtLeast100UserMarkedPointsInTrainingSet()) {
                             document.getElementById('autoDetectBtn').click();
                         }
-                        alert(111)
 
                         addAnomalyLayer(chart1, fullData, flags, 1);
 
@@ -2328,8 +2375,6 @@
 
         const count8 = result.filter(x => x === 8).length;
         const ratio8 = count8 / result.length;
-        console.log("8的比例：", ratio8);
-
         testPhase = true;
 
         finalTest();
@@ -2374,7 +2419,7 @@
         document.getElementById('dampXLag').disabled = disabled;
     });
 
-
+    // Andri: auto params button
     document.getElementById('autoAndri').addEventListener('change', function () {
         let disabled = this.checked;
         document.getElementById('andriMaxW').disabled = disabled;
@@ -2459,9 +2504,9 @@
                 progressBar.style.width = '100%';
                 progressBar.innerText = '100%';
 
-                if (!testPhase) {
-                    if (algoSelect !== '3') {
-                        setTimeout(() => {
+                setTimeout(() => {
+                    if (!testPhase) {
+                        if (algoSelect !== '3') {
                             loadingModal.hide();
                             norm_a_l = data.pattern_length;
                             flags = data.flags;
@@ -2473,9 +2518,7 @@
                             initTpFpPieChart();
                             enableRevisePotentialMislabeledAnomaliesPhase();
                             fitUserLabels();
-                        }, 500);
-                    } else {
-                        setTimeout(() => {
+                        } else {
                             loadingModal.hide();
                             norm_a_l = data.pattern_length;
                             flags = data.flags;
@@ -2487,17 +2530,14 @@
                             initTpFpPieChart();
                             enableRevisePotentialMislabeledAnomaliesAndriPhase();
                             fitUserLabels();
-                        }, 500);
-                    }
-                } else {
-                    setTimeout(() => {
+                        }
+                    } else {
                         loadingModal.hide();
                         globalScores = data.global_scores;
                         finalTest();
-                    }, 500);
 
-
-                }
+                    }
+                }, 500);
 
 
             })
@@ -2593,7 +2633,7 @@
         addAnomalyLayer(chart1, fullData, flags_for_marking_more_labels, 4);
         addAnomalyLayer(anomalyScoreChart, globalScores, flags_for_marking_more_labels, 4);
 
-        // findDifferentNormalPatterns(rangeStart, rangeStart + 1.5 * norm_a_l, rangeStart, rangeEnd, point_dic[7]['symbol']);
+        findDifferentNormalPatterns(rangeStart, rangeStart + 1.5 * norm_a_l, rangeStart, rangeEnd, point_dic[7]['symbol']);
 
     }
 
@@ -2679,7 +2719,7 @@
     }
 
 
-    function renderNormalPatternOnChart2(nm, startIndex, nmAlignIdx, rangeStart, rangeEnd, svg) {
+    function renderNormalPatternOnChart2(nm, startIndex, nmAlignIdx, rangeStart, rangeEnd, svg, showName) {
         const option = chart2.getOption();
         const retainedSeries = option.series.filter(s => s.id !== 'normalPattern');
         const nmLen = nm.length;
@@ -2692,6 +2732,9 @@
         }
 
         chart2.setOption({
+            title: {
+                text: showName
+            },
             legend: {
                 show: true,
                 orient: 'vertical',
@@ -2703,12 +2746,19 @@
                     {
                         name: 'Candidates',
                         icon: svg
-                    }
+                    },
+
                 ],
                 right: '10%',
+                itemWidth: 20,
+                itemHeight: 20,
                 textStyle: {
-                    fontSize: 16,
+                    fontSize: 20,
                     fontWeight: 'bold',
+                },
+                formatter: function (name) {
+                    if (name === 'Candidates') return showName;
+                    return name;
                 }
             },
             series: [
@@ -2824,7 +2874,8 @@
             .then(data => {
                 let nm = data.nm;
                 let start = data.loc;
-                renderNormalPatternOnChart2(nm, startIndex, start, rangeStart, rangeEnd, point_dic[6]['symbol']);
+                renderNormalPatternOnChart2(nm, startIndex, start, rangeStart, rangeEnd,
+                    point_dic[6]['symbol'], 'Candidate Normal Points');
 
             })
             .catch(error => {
@@ -2864,7 +2915,8 @@
             .then(data => {
                 let nm = data.nm;
                 let start = data.loc;
-                renderNormalPatternOnChart2(nm, startIndex, start, rangeStart, rangeEnd, point_dic[7]['symbol']);
+                renderNormalPatternOnChart2(nm, startIndex, start, rangeStart, rangeEnd, point_dic[7]['symbol'],
+                    "Candidate Anomalies");
 
             })
             .catch(error => {
@@ -2979,9 +3031,11 @@
                 flag1_indices_and_scores.push([idx, globalScores[idx]]);
             }
         });
-// 现在 flag1_indices_and_scores 是 [index, score] 的二维数组
-// 例如 [[3, 0.82], [12, 0.13], ...]
-        console.log(flag1_indices_and_scores);
+
+        const x = getTopPercentileValue(10);
+        let threshold = getAnomalyMeanMinusSigma();
+        threshold = Math.max(x, threshold);
+        currentThreshold = threshold;
 
 
         const anomalyScores = [], extraScores = [];
@@ -2990,6 +3044,7 @@
         globalScores.forEach((score, idx) => {
             if (flags[idx] === 1 && !usedSet.has(idx)) anomalyScores.push(score);
         });
+
         const allScores = anomalyScores.concat(extraScores);
         const minScore = Math.min(...allScores);
         const maxScore = Math.max(...allScores);
@@ -2997,6 +3052,7 @@
         const binSize = (maxScore - minScore) / binCount;
         const binsMain = new Array(binCount).fill(0);
         const binsExtra = new Array(binCount).fill(0);
+
         anomalyScores.forEach(score => {
             let i = Math.floor((score - minScore) / binSize);
             if (i === binCount) i--;
@@ -3029,15 +3085,25 @@
         const maxBin = Math.max(...binsMain, ...binsExtra);
         const maxDensity = Math.max(...densityVals);
         const scale = maxDensity > 0 ? maxBin / maxDensity : 1;
+
+
+        const confirmedBarData = binsMain.map((count, i) => ({
+    value: count,
+    itemStyle: {
+        color: xCenters[i] >= currentThreshold ? '#b71c1c' : '#ff9999'
+    }
+}));
+
+
+
         const confirmedSeries = {
             name: 'Confirmed Anomalies',
             type: 'bar',
-            data: binsMain,
+            data: confirmedBarData,
             barWidth: '100%',
             barGap: '-100%',
             barCategoryGap: '0%',
-            itemStyle: {color: 'rgba(255, 120, 110, 0.9)'},
-            emphasis: {itemStyle: {color: 'rgba(255, 120, 110, 0.9)'}}
+
         };
 
         const reviewSeries = {
@@ -3073,10 +3139,7 @@
         }
 
 
-        const x = getTopPercentileValue(10);
-        let threshold = getAnomalyMeanMinusSigma();
-        threshold = Math.max(x, threshold);
-        currentThreshold = threshold;
+
 
         let thresholdIndex = Math.floor((threshold - minScore) / binSize);
         if (thresholdIndex < 0) thresholdIndex = 0;
@@ -3149,7 +3212,6 @@
 
 
     function renderTpFpPieChart(threshold = currentThreshold) {
-
         let tp = 0, fp = 0, marked = 0;
         for (let i = 0; i < flags.length; ++i) {
             if (flags[i] === 1) {
@@ -3172,7 +3234,11 @@
             legend: {
                 orient: 'vertical',
                 left: 10,
-                data: ['TP', 'FP']
+                data: ['TP', 'FP'],
+                textStyle: {
+                    fontSize: 24,
+                    fontWeight: 'bold',
+                }
             },
             series: [
                 {
@@ -3184,14 +3250,24 @@
                         show: true,
                         position: 'outside',
                         formatter: '{b}: {c}',
-                        fontSize: 16
+                        fontSize: 24,
+                        fontWeight: 'bold'
+
                     },
                     labelLine: {
                         show: true
                     },
                     data: [
-                        {value: tp, name: 'TP', itemStyle: {color: '#28a745'}},
-                        {value: fp, name: 'FP', itemStyle: {color: '#ffe600'}}
+                        {
+                            value: tp,
+                            name: 'TP',
+                            itemStyle: {color: '#b71c1c'}
+                        },
+                        {
+                            value: fp,
+                            name: 'FP',
+                            itemStyle: {color: '#ff9999'}                         }
+
                     ]
                 }
             ]

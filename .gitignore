@@ -9,3 +9,6 @@ norma_cache
 data
 
 results
+
+# Ignore proprietary model code
+algorithms/norma/
