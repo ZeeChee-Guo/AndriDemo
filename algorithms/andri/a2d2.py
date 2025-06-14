@@ -6,9 +6,9 @@ from scipy.cluster.hierarchy import distance
 import stumpy
 import math
 
-from algotithms.andri.util_a2d2 import *
-from algotithms.andri.ahc import membership, adaptive_ahc
-from algotithms.andri.plot_aadd import *
+from algorithms.andri.util_a2d2 import *
+from algorithms.andri.ahc import membership, adaptive_ahc
+from algorithms.andri.plot_aadd import *
 from tqdm.notebook import tqdm
 # from sklearn.cluster import DBSCAN
 import logging

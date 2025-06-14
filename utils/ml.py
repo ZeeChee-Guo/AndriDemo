@@ -5,11 +5,11 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.mixture import BayesianGaussianMixture
 import warnings
 import pandas as pd
-from algotithms.norma.norma import NORMA
+from algorithms.norma.norma import NORMA
 from TSB_UAD.models.damp import DAMP
-from algotithms.andri.util_a2d2 import find_length
+from algorithms.andri.util_a2d2 import find_length
 from TSB_UAD.models.sand import SAND
-from algotithms.andri.a2d2 import A2D2
+from algorithms.andri.a2d2 import A2D2
 from TSB_UAD.utils.slidingWindows import find_length as find_sand_length
 
 memory = Memory(location="./norma_cache", verbose=0)

@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.cluster.hierarchy import dendrogram, fcluster, distance
-from algotithms.andri.util_a2d2 import intra_cluster_dist, compute_diff_dist, longest_consecutive_sequence
+from algorithms.andri.util_a2d2 import intra_cluster_dist, compute_diff_dist, longest_consecutive_sequence
 # from util.util_overlap import intra_cluster_dist, compute_diff_dist, longest_consecutive_sequence
 # import logging
 import copy
