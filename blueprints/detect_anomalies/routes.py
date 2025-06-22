@@ -18,15 +18,11 @@ def sand():
     data = json_data.get('data')
     flags = json_data.get('flags')
     training_set = json_data.get('areas')
-    pattern_length = json_data.get('pattern_length')
-
-    if pattern_length == -1:
-        result = sand_scoring(data, flags, training_set)
-    else:
-        result = sand_scoring(data, flags, training_set, pattern_length)
+    params = json_data.get('hyperParameters')
+    result = sand_scoring(data, flags, training_set, params)
 
     if isinstance(result, dict):
-        save_cache(CACHE_FILE_PATH2, result)
+        # save_cache(CACHE_FILE_PATH2, result)
         return jsonify(result)
     else:
         return result
@@ -43,15 +39,11 @@ def damp():
     data = json_data.get('data')
     flags = json_data.get('flags')
     training_set = json_data.get('areas')
-    pattern_length = json_data.get('pattern_length')
-
-    if pattern_length == -1:
-        result = damp_scoring(data, flags, training_set)
-    else:
-        result = damp_scoring(data, flags, training_set, pattern_length)
+    params = json_data.get('hyperParameters')
+    result = damp_scoring(data, flags, training_set, params)
 
     if isinstance(result, dict):
-        save_cache(CACHE_FILE_PATH3, result)
+        # save_cache(CACHE_FILE_PATH3, result)
         return jsonify(result)
     else:
         return result
@@ -68,16 +60,12 @@ def norm_a():
     data = json_data.get('data')
     flags = json_data.get('flags')
     training_set = json_data.get('areas')
-    pattern_length = json_data.get('pattern_length')
-
-    if pattern_length == -1:
-        result = norm_a_scoring(data, flags, training_set)
-    else:
-        result = norm_a_scoring(data, flags, training_set, pattern_length)
+    params = json_data.get('hyperParameters')
+    result = norm_a_scoring(data, flags, training_set, params)
 
 
     if isinstance(result, dict):
-        save_cache(CACHE_FILE_PATH1, result)
+        # save_cache(CACHE_FILE_PATH1, result)
         return jsonify(result)
     else:
         return result
@@ -92,16 +80,11 @@ def andri():
     json_data = request.get_json()
     data = json_data.get('data')
     flags = json_data.get('flags')
-    training_set = json_data.get('areas')
-    pattern_length = json_data.get('pattern_length')
-
-    if pattern_length == -1:
-        result = andri_scoring(data, flags, training_set, {})
-    else:
-        result = andri_scoring(data, flags, training_set, {})
+    params = json_data.get('hyperParameters')
+    result = andri_scoring(data, flags, params)
 
     if isinstance(result, dict):
-        save_cache(CACHE_FILE_PATH4, result)
+        # save_cache(CACHE_FILE_PATH4, result)
         return jsonify(result)
     else:
         return result
@@ -155,7 +138,7 @@ def norm_a_fit_user_labels():
     flags = np.array(json_data.get('flags'))
     training_set = json_data.get('training_set')
 
-    stable, intersect, mu, sigma, active_std, weights = fit_user_labels(scores, flags, training_set)
+    stable, intersect, mu, sigma, active_mean, active_std, weights = fit_user_labels(scores, flags, training_set)
 
-    return jsonify({'stable': stable, 'intersect': intersect, 'mu':mu, 'sigma': sigma, 'active_std': active_std,
-                    'weights': weights})
+    return jsonify({'stable': stable, 'intersect': intersect, 'mu':mu, 'sigma': sigma,
+                    'active_mean': active_mean, 'active_std': active_std,'weights': weights})

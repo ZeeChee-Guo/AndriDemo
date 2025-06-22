@@ -17,13 +17,13 @@ git clone https://github.com/ZeeChee-Guo/AndriDemo.git
 cd AndriDemo
 ```
 ### 3. Clone the repository and enter the project directory:
-On **Windows**:
+On Windows:
  ```
  python -m venv venv
  venv\Scripts\activate
  ```
 
-On **macOS/Linux**:
+On macOS/Linux:
 ```
 python3 -m venv venv
 source venv/bin/activate
