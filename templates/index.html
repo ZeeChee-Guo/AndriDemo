@@ -492,7 +492,7 @@
                     <td style="width: 60%;" id="andriSlidingWindowLengthTest">99</td>
                 </tr>
                 <tr>
-                    <th>kadj</th>
+                    <th>k</th>
                     <td id="andriKadjTest">1</td>
                 </tr>
                 <tr>
@@ -706,9 +706,6 @@
                         <select class="form-select fs-4" id="exampleDataSelect">
                             <option value="" selected disabled>Please select</option>
                             <option value="MBA_ECG805_data.arff">MBA ECG805</option>
-                            <option value="ECG_Test.arff">ECG Test</option>
-                            <option value="example_dataset1.arff">Demo Dataset2</option>
-                            <option value="example_dataset2.arff">Example2</option>
                             <option value="repeat_ecg.arff">Repeat ECG</option>
                         </select>
                     </div>
@@ -837,7 +834,7 @@
                                placeholder="Enter Sliding Window" disabled>
                     </div>
                     <div class="mb-2">
-                        <label for="andriKadjValue" class="form-label">Kadj</label>
+                        <label for="andriKadjValue" class="form-label">k</label>
                         <input type="number" class="form-control" id="andriKadjValue" placeholder="Enter Min Size"
                                disabled>
                     </div>
@@ -2817,20 +2814,43 @@
                                 initTpFpPieChart();
                                 enableRevisePotentialMislabeledAnomaliesAndriPhase();
                                 break
-
+                            case '0':
+                                globalScores = data.global_scores;
+                                norm_a_normal_patterns = data.nms;
+                                norm_a_weights = data.weights
+                                norma_pattern_length = data.pattern_length;
+                                flags = data.flags;
+                                initial_flags = flags.slice();
+                                norm_scores = data.global_scores;
+                                enableRevisePotentialMislabeledAnomaliesPhase();
+                                break
+                            case '1':
+                                globalScores = data.global_scores;
+                                sand_normal_patterns = data.nms;
+                                sand_weights = data.weights;
+                                sand_pattern_length = data.pattern_length;
+                                sand_batch_size = data.batch_size;
+                                sand_init_length = data.init_length;
+                                flags = data.flags;
+                                initial_flags = flags.slice();
+                                sand_scores = data.global_scores;
+                                enableRevisePotentialMislabeledAnomaliesPhase();
+                                break
+                            case '2':
+                                globalScores = data.global_scores;
+                                damp_pattern_length = data.pattern_length;
+                                damp_xLag = data.x_lag;
+                                flags = data.flags;
+                                initial_flags = flags.slice();
+                                damp_normal_patterns = data.nms;
+                                damp_weights = data.weights;
+                                damp_normal_patterns = sand_normal_patterns;
+                                damp_weights = sand_weights;
+                                damp_scores = data.global_scores;
+                                enableRevisePotentialMislabeledAnomaliesPhase();
+                                break
                         }
 
-
-                        if (algoSelect !== '3') {
-
-                            andri_sliding_window = data.pattern_length;
-                            flags = data.flags;
-                            norm_a_normal_patterns = data.nms;
-                            norm_a_weights = data.weights;
-                            clickRangeScale = 4;
-                            initTpFpPieChart();
-                            enableRevisePotentialMislabeledAnomaliesPhase();
-                        }
                     } else {
                         // test
                         switch (algoSelect) {
@@ -3567,6 +3587,9 @@
                 break
             case '2':
                 nm = damp_normal_patterns;
+                if (nm.length === 0){
+                    return
+                }
                 break
 
         }
@@ -3660,6 +3683,9 @@
             case '2':
                 nm = damp_normal_patterns;
                 nmw = damp_weights;
+                if (nm.length === 0){
+                    return
+                }
                 break
         }
 
@@ -4654,7 +4680,7 @@
 
 
     function enableTestPhaseForAndri() {
-        if (norm_a_threshold !== 0 && damp_threshold !== 0 && sand_threshold !== 0) {
+        if (damp_threshold !== 0 && sand_threshold !== 0) {
             document.getElementById('tab-comparison').classList.remove('d-none');
         }
         document.getElementById('testPhaseTitle').innerText = 'Testing Result';
@@ -5701,59 +5727,81 @@
 
 
     function findLongestAndriAnomalyIntervalWithThreshold() {
-        const thresholdMap = {};
-        training_index_nm_map.forEach(item => {
-            thresholdMap[item.NM] = item.threshold;
-        });
+    const thresholdMap = {};
+    training_index_nm_map.forEach(item => {
+        thresholdMap[item.NM] = item.threshold;
+    });
 
-        const anomalyIndices = [];
-        for (let i = 0; i < andri_globalScores.length; i++) {
+    const anomalyIndices = [];
+    for (let i = 0; i < andri_globalScores.length; i++) {
+        const nm = points_nm_map[i];
+        const thr = thresholdMap[nm];
+        if (thr !== undefined && andri_globalScores[i] > thr) {
+            anomalyIndices.push(i);
+        }
+    }
+    if (anomalyIndices.length === 0) return null;
+
+    anomalyIndices.sort((a, b) => a - b);
+    const intervals = [];
+    let start = anomalyIndices[0], prev = start;
+    for (let k = 1; k < anomalyIndices.length; k++) {
+        const idx = anomalyIndices[k];
+        if (idx === prev + 1) {
+            prev = idx;
+        } else {
+            intervals.push([start, prev]);
+            start = prev = idx;
+        }
+    }
+    intervals.push([start, prev]);
+
+    // **关键处理：对每个区间从左到右，遇到第一个baseline为0的异常点就截断**
+    const validIntervals = intervals.map(([s, e]) => {
+        for (let i = s; i <= e; i++) {
             const nm = points_nm_map[i];
             const thr = thresholdMap[nm];
-            if (thr !== undefined && andri_globalScores[i] > thr) {
-                anomalyIndices.push(i);
+            if (thr !== undefined && andri_globalScores[i] > thr && baseline[i] === 0) {
+                // 截断到i-1
+                if (i > s) {
+                    return [s, i - 1];
+                } else {
+                    return null; // 整个区间被干掉
+                }
             }
         }
-        if (anomalyIndices.length === 0) return null;
+        return [s, e]; // 全区间都合法
+    }).filter(Boolean).filter(([s, e]) => e >= s);
 
-        anomalyIndices.sort((a, b) => a - b);
-        const intervals = [];
-        let start = anomalyIndices[0], prev = start;
-        for (let k = 1; k < anomalyIndices.length; k++) {
-            const idx = anomalyIndices[k];
-            if (idx === prev + 1) {
-                prev = idx;
-            } else {
-                intervals.push([start, prev]);
-                start = prev = idx;
-            }
+    if (validIntervals.length === 0) return null;
+
+    // 找最长的区间
+    validIntervals.sort((a, b) => (b[1] - b[0]) - (a[1] - a[0]));
+    const [bestStart, bestEnd] = validIntervals[0];
+
+    // 计算区间内数量最多的阈值
+    const countMap = {};
+    for (let idx = bestStart; idx <= bestEnd; idx++) {
+        const nm = points_nm_map[idx];
+        const thr = thresholdMap[nm];
+        if (thr !== undefined) {
+            countMap[thr] = (countMap[thr] || 0) + 1;
         }
-        intervals.push([start, prev]);
-
-        intervals.sort((a, b) => (b[1] - b[0]) - (a[1] - a[0]));
-        const [bestStart, bestEnd] = intervals[0];
-
-        const countMap = {};
-        for (let idx = bestStart; idx <= bestEnd; idx++) {
-            const nm = points_nm_map[idx];
-            const thr = thresholdMap[nm];
-            if (thr !== undefined) {
-                countMap[thr] = (countMap[thr] || 0) + 1;
-            }
-        }
-        let bestThreshold = null, maxCount = -1;
-        for (const [thr, cnt] of Object.entries(countMap)) {
-            if (cnt > maxCount) {
-                maxCount = cnt;
-                bestThreshold = Number(thr);
-            }
-        }
-
-        return {
-            interval: [bestStart, bestEnd],
-            threshold: bestThreshold
-        };
     }
+    let bestThreshold = null, maxCount = -1;
+    for (const [thr, cnt] of Object.entries(countMap)) {
+        if (cnt > maxCount) {
+            maxCount = cnt;
+            bestThreshold = Number(thr);
+        }
+    }
+
+    return {
+        interval: [bestStart, bestEnd],
+        threshold: bestThreshold
+    };
+}
+
 
 
     function findLongestBelowThresholdInterval() {
@@ -5811,6 +5859,7 @@
 
 
 </script>
+
 
 
 </body>

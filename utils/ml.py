@@ -5,14 +5,6 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.mixture import BayesianGaussianMixture
 import warnings
 import pandas as pd
-
-try:
-    from algorithms.norma.norma import NORMA
-except ModuleNotFoundError:
-    raise ImportError(
-        "The NORMA module is proprietary and not included in this repository.\n"
-        "Please request `norma.py` from the author and place it at: algorithms/norma/norma.py"
-    )
 from TSB_UAD.models.damp import DAMP
 from algorithms.andri.util_andri import find_length
 from TSB_UAD.models.sand import SAND
@@ -24,6 +16,14 @@ memory = Memory(location="./norma_cache", verbose=0)
 
 @memory.cache
 def compute_global_scores(data_arr, training_set, param_list):
+    try:
+        from algorithms.norma.norma import NORMA
+    except ModuleNotFoundError:
+        raise ImportError(
+            "The NORMA module is proprietary and not included in this repository.\n"
+            "Please request `norma.py` from the author and place it at: algorithms/norma/norma.py"
+        )
+
     pattern_length = param_list.get('patternLength') or find_length(data_arr)
 
     N = len(data_arr)
