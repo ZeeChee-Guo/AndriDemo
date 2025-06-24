@@ -12,7 +12,8 @@ of anomalies and drift.
 ## 3. Dataset
 In the folder "static/datasets", there are three instance datasets.
 
-## 3.1 Repeat ECG 
+### 3.1 Repeat ECG 
+- Concatenate two ECG datasets(ECG_803, ECG_805) with different frequencies
 
 ### 3.2 Weather data
 - The Weather dataset is a hourly, geographically aggregated temperature and radiation information in Europe originated from the NASA MERRA-2.
