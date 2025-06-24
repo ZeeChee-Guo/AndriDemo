@@ -9,6 +9,17 @@ of anomalies and drift.
 - https://github.com/TheDatumOrg/TSB-UAD
 - https://github.com/mac-dsl/AnDri
 
+## 3. Dataset
+In the folder "static/datasets", there are three instance datasets.
+
+## 3.1 Repeat ECG 
+
+### 3.2 Weather data
+- The Weather dataset is a hourly, geographically aggregated temperature and radiation information in Europe originated from the NASA MERRA-2.
+
+### 3.3 Elec
+- The Elec. dataset is a half-hourly aggregated electricity usage patterns in New South Wales, Australia.
+
 ## 3. Quick Start
 
 ### 3.1 Prerequisites
