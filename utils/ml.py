@@ -294,19 +294,6 @@ def damp_scoring(data, flags, training_set, params):
     }
 
 
-def gaussian_kl_divergence(mu1, sigma1, mu2, sigma2):
-    eps = 1e-8
-    sigma1 = max(sigma1, eps)
-    sigma2 = max(sigma2, eps)
-    return np.log(sigma2 / sigma1) + (sigma1 ** 2 + (mu1 - mu2) ** 2) / (2 * sigma2 ** 2) - 0.5
-
-
-def cohen_d(mu1, sigma1, mu2, sigma2):
-    pooled_std = ((sigma1 ** 2 + sigma2 ** 2) / 2) ** 0.5
-    if pooled_std == 0:
-        return float('inf')
-    return abs(mu1 - mu2) / pooled_std
-
 
 def find_gaussian_intersection(mu1, sigma1, mu2, sigma2):
     if mu1 > mu2:
@@ -367,26 +354,24 @@ def fit_user_labels(scores, flags, training_set):
     )
     bgmm.fit(scores_sel)
 
-    # 提取混合模型参数
     weight_threshold = 0.05
     weights = bgmm.weights_
     means = bgmm.means_.flatten()
     covariances = bgmm.covariances_.flatten()
     stds = np.sqrt(covariances)
 
-    # 预测并筛选活跃成分
+
     labels = bgmm.predict(scores_sel)
     active_idx = np.where(weights > weight_threshold)[0]
 
-    # 收集活跃成分中的样本点
     mask_active_points = np.isin(labels, active_idx)
     scores_active = scores_sel[mask_active_points].flatten()
 
-    # 计算活跃样本点的分布统计量
+
     mean_active = float(np.mean(scores_active)) if scores_active.size > 0 else 0.0
     std_active  = float(np.std(scores_active))  if scores_active.size > 0 else 0.0
 
-    # 如果少于两个活跃成分，则认为已收敛
+
     if len(active_idx) < 2:
         print('剩下不到两个活跃成分:')
         for idx in active_idx:
@@ -394,17 +379,12 @@ def fit_user_labels(scores, flags, training_set):
         return (
             1,               # stable
             [-1],            # intersect
-            means.tolist(),  # 所有成分均值列表
-            stds.tolist(),   # 所有成分标准差列表
-            mean_active,     # 活跃样本分布均值
-            std_active,      # 活跃样本分布标准差
-            weights.tolist() # 所有成分权重列表
+            means.tolist(),
+            stds.tolist(),
+            mean_active,     #
+            std_active,
+            weights.tolist()
         )
-
-    # 打印活跃成分信息
-    for idx in active_idx:
-        print(f"  mean: {means[idx]:.4f}, std: {stds[idx]:.4f}, weight: {weights[idx]:.4f}")
-    print(f"活跃样本总体分布 std: {std_active:.4e}, mean: {mean_active:.4e}")
 
 
     def compute_intersection(idx1, idx2):
@@ -423,7 +403,7 @@ def fit_user_labels(scores, flags, training_set):
         between = [r for r in roots if min(mu1, mu2) < r < max(mu1, mu2)]
         return between[0] if len(between) == 1 else (min(between) if between else (mu1 + mu2) / 2.0)
 
-    # 辅助函数：基于后验概率筛选不确定区间
+
     def find_uncertainty_window(mu1, sigma1, pi1, mu2, sigma2, pi2, epsilon=0.05, grid_size=1000):
         sigma_avg = np.sqrt((sigma1 ** 2 + sigma2 ** 2) / 2.0)
         lo = max(0.0, min(mu1, mu2) - sigma_avg)
@@ -442,7 +422,6 @@ def fit_user_labels(scores, flags, training_set):
     active_sorted = sorted(active_idx, key=lambda i: means[i])
     MAX_ONCE = 20
 
-    # 对每对相邻活跃成分筛选不确定样本
     for i in range(len(active_sorted) - 1):
         idx1, idx2 = active_sorted[i], active_sorted[i + 1]
         mu1, sigma1, pi1 = means[idx1], stds[idx1], weights[idx1]
@@ -451,35 +430,32 @@ def fit_user_labels(scores, flags, training_set):
         sigma_avg = np.sqrt((sigma1 ** 2 + sigma2 ** 2) / 2.0)
         L0 = max(x0 - sigma_avg, min(mu1, mu2))
         U0 = min(x0 + sigma_avg, max(mu1, mu2))
-        # 若区间内无训练样本则视作收敛
         count_between = sum(
             1 for seg in training_set for j in range(seg['start'], seg['end']+1)
-            if 0 <= j < len(scores) and L0 < scores[j] < U0 and flags[j] == 0
+            if len(scores) > j >= 0 == flags[j] and L0 < scores[j] < U0
         )
         if count_between == 0:
-            return (1, [-1], means.tolist(), stds.tolist(), mean_active, std_active, weights.tolist())
-        # 扩展不确定区间并收集候选
+            return 1, [-1], means.tolist(), stds.tolist(), mean_active, std_active, weights.tolist()
+
         L, U = find_uncertainty_window(mu1, sigma1, pi1, mu2, sigma2, pi2)
         uncertain = [j for seg in training_set for j in range(seg['start'], seg['end']+1)
-                     if 0 <= j < len(scores) and L <= scores[j] <= U and flags[j] == 0]
+                     if len(scores) > j >= 0 == flags[j] and L <= scores[j] <= U]
         uncertain = sorted(set(uncertain))
         if len(uncertain) > MAX_ONCE:
-            # 缩小 epsilon 重试
             L2, U2 = find_uncertainty_window(mu1, sigma1, pi1, mu2, sigma2, pi2, epsilon=0.02, grid_size=2000)
             uncertain = [j for seg in training_set for j in range(seg['start'], seg['end']+1)
-                         if 0 <= j < len(scores) and L2 <= scores[j] <= U2 and flags[j] == 0]
+                         if len(scores) > j >= 0 == flags[j] and L2 <= scores[j] <= U2]
             uncertain = sorted(set(uncertain))
         if len(uncertain) < 10:
             L3, U3 = find_uncertainty_window(mu1, sigma1, pi1, mu2, sigma2, pi2, epsilon=0.2, grid_size=2000)
             uncertain = [j for seg in training_set for j in range(seg['start'], seg['end']+1)
-                         if 0 <= j < len(scores) and L3 <= scores[j] <= U3 and flags[j] == 0]
+                         if len(scores) > j >= 0 == flags[j] and L3 <= scores[j] <= U3]
             uncertain = sorted(set(uncertain))
         if len(uncertain) > MAX_ONCE:
             uncertain.sort(key=lambda j: abs(scores[j] - x0))
             uncertain = uncertain[:MAX_ONCE]
         if uncertain:
-            return (0, uncertain, means.tolist(), stds.tolist(), mean_active, std_active, weights.tolist())
+            return 0, uncertain, means.tolist(), stds.tolist(), mean_active, std_active, weights.tolist()
 
-    # 默认：全部收敛
     return 1, [-1], means.tolist(), stds.tolist(), mean_active, std_active, weights.tolist()
 

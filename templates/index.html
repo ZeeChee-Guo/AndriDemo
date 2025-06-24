@@ -705,8 +705,9 @@
                         <label for="exampleDataSelect" class="form-label fs-4">Use an Example Dataset</label>
                         <select class="form-select fs-4" id="exampleDataSelect">
                             <option value="" selected disabled>Please select</option>
-                            <option value="MBA_ECG805_data.arff">MBA ECG805</option>
+                            <option value="0_weather_anomaly_scale_f_0_s_0.1_r_3_uniform.arff">Weather</option>
                             <option value="repeat_ecg.arff">Repeat ECG</option>
+                            <option value="0_elec_anomaly_scale_f_0_s_0.1_r_3_uniform.arff">Electricity</option>
                         </select>
                     </div>
                     <div class="d-flex align-items-center mb-3 mt-1">
@@ -2343,28 +2344,6 @@
                 addAnomalyLayer(chart1, fullData, flags, 1);
 
 
-                if (algoSelect === '3') {
-                    let [s, e] = isAllNMMarked();
-                    alert(s);
-                    const startIndexInX = trainingSet.indexOf(s);
-                    const endIndexInX = trainingSet.indexOf(e);
-                    let indices = [];
-                    for (let i = s; i <= e; i++) {
-                        if (baseline[i] === 1) {
-                            indices.push(i);
-                        }
-                    }
-
-                    chart2.dispatchAction({
-                        type: "dataZoom",
-                        startValue: startIndexInX,
-                        endValue: endIndexInX,
-                    });
-
-                    alert(`Please Mark Some Anomalies Between ${s} and ${e}`);
-                }
-
-
             });
 
             // Cancel sequential mode when scrolling the mouse wheel
@@ -2395,7 +2374,10 @@
             for (const change of lastChanges) {
                 flags[change.index] = change.prevFlag;
             }
-            markAnomalies();
+
+            updateAnomaliesNum();
+            addAnomalyLayer(chart1, fullData, flags, 1);
+            chart2.resize();
         } else {
             alert("No more sequential anomalies left");
         }
@@ -2494,6 +2476,7 @@
         document.getElementById('algorithmTabs').classList.add('d-none');
         document.getElementById('testSectionNMs').classList.add('d-none');
         document.getElementById('testSectionAnomalies').classList.add('d-none');
+        initTpFpPieChart();
 
         clickRangeScale = 4;
         process_step = -1;
@@ -2822,6 +2805,7 @@
                                 flags = data.flags;
                                 initial_flags = flags.slice();
                                 norm_scores = data.global_scores;
+                                initTpFpPieChart();
                                 enableRevisePotentialMislabeledAnomaliesPhase();
                                 break
                             case '1':
@@ -2834,6 +2818,7 @@
                                 flags = data.flags;
                                 initial_flags = flags.slice();
                                 sand_scores = data.global_scores;
+                                initTpFpPieChart();
                                 enableRevisePotentialMislabeledAnomaliesPhase();
                                 break
                             case '2':
@@ -2847,6 +2832,7 @@
                                 damp_normal_patterns = sand_normal_patterns;
                                 damp_weights = sand_weights;
                                 damp_scores = data.global_scores;
+                                initTpFpPieChart();
                                 enableRevisePotentialMislabeledAnomaliesPhase();
                                 break
                         }
@@ -3587,7 +3573,7 @@
                 break
             case '2':
                 nm = damp_normal_patterns;
-                if (nm.length === 0){
+                if (nm.length === 0) {
                     return
                 }
                 break
@@ -3683,7 +3669,7 @@
             case '2':
                 nm = damp_normal_patterns;
                 nmw = damp_weights;
-                if (nm.length === 0){
+                if (nm.length === 0) {
                     return
                 }
                 break
@@ -4680,6 +4666,10 @@
 
 
     function enableTestPhaseForAndri() {
+        if (norm_scores.length === 0) {
+            norm_scores = Array(baseline.length).fill(0);
+        }
+
         if (damp_threshold !== 0 && sand_threshold !== 0) {
             document.getElementById('tab-comparison').classList.remove('d-none');
         }
@@ -5711,8 +5701,8 @@
         driftScoreCharts.forEach((chart) => {
             chart.dispatchAction({
                 type: "dataZoom",
-                startValue: z3-10,
-                endValue: z4+10
+                startValue: z3 - 10,
+                endValue: z4 + 10
             });
         });
 
@@ -5727,81 +5717,76 @@
 
 
     function findLongestAndriAnomalyIntervalWithThreshold() {
-    const thresholdMap = {};
-    training_index_nm_map.forEach(item => {
-        thresholdMap[item.NM] = item.threshold;
-    });
+        const thresholdMap = {};
+        training_index_nm_map.forEach(item => {
+            thresholdMap[item.NM] = item.threshold;
+        });
 
-    const anomalyIndices = [];
-    for (let i = 0; i < andri_globalScores.length; i++) {
-        const nm = points_nm_map[i];
-        const thr = thresholdMap[nm];
-        if (thr !== undefined && andri_globalScores[i] > thr) {
-            anomalyIndices.push(i);
-        }
-    }
-    if (anomalyIndices.length === 0) return null;
-
-    anomalyIndices.sort((a, b) => a - b);
-    const intervals = [];
-    let start = anomalyIndices[0], prev = start;
-    for (let k = 1; k < anomalyIndices.length; k++) {
-        const idx = anomalyIndices[k];
-        if (idx === prev + 1) {
-            prev = idx;
-        } else {
-            intervals.push([start, prev]);
-            start = prev = idx;
-        }
-    }
-    intervals.push([start, prev]);
-
-    // **关键处理：对每个区间从左到右，遇到第一个baseline为0的异常点就截断**
-    const validIntervals = intervals.map(([s, e]) => {
-        for (let i = s; i <= e; i++) {
+        const anomalyIndices = [];
+        for (let i = 0; i < andri_globalScores.length; i++) {
             const nm = points_nm_map[i];
             const thr = thresholdMap[nm];
-            if (thr !== undefined && andri_globalScores[i] > thr && baseline[i] === 0) {
-                // 截断到i-1
-                if (i > s) {
-                    return [s, i - 1];
-                } else {
-                    return null; // 整个区间被干掉
-                }
+            if (thr !== undefined && andri_globalScores[i] > thr) {
+                anomalyIndices.push(i);
             }
         }
-        return [s, e]; // 全区间都合法
-    }).filter(Boolean).filter(([s, e]) => e >= s);
+        if (anomalyIndices.length === 0) return null;
 
-    if (validIntervals.length === 0) return null;
-
-    // 找最长的区间
-    validIntervals.sort((a, b) => (b[1] - b[0]) - (a[1] - a[0]));
-    const [bestStart, bestEnd] = validIntervals[0];
-
-    // 计算区间内数量最多的阈值
-    const countMap = {};
-    for (let idx = bestStart; idx <= bestEnd; idx++) {
-        const nm = points_nm_map[idx];
-        const thr = thresholdMap[nm];
-        if (thr !== undefined) {
-            countMap[thr] = (countMap[thr] || 0) + 1;
+        anomalyIndices.sort((a, b) => a - b);
+        const intervals = [];
+        let start = anomalyIndices[0], prev = start;
+        for (let k = 1; k < anomalyIndices.length; k++) {
+            const idx = anomalyIndices[k];
+            if (idx === prev + 1) {
+                prev = idx;
+            } else {
+                intervals.push([start, prev]);
+                start = prev = idx;
+            }
         }
-    }
-    let bestThreshold = null, maxCount = -1;
-    for (const [thr, cnt] of Object.entries(countMap)) {
-        if (cnt > maxCount) {
-            maxCount = cnt;
-            bestThreshold = Number(thr);
+        intervals.push([start, prev]);
+
+        const validIntervals = intervals.map(([s, e]) => {
+            for (let i = s; i <= e; i++) {
+                const nm = points_nm_map[i];
+                const thr = thresholdMap[nm];
+                if (thr !== undefined && andri_globalScores[i] > thr && baseline[i] === 0) {
+                    if (i > s) {
+                        return [s, i - 1];
+                    } else {
+                        return null;
+                    }
+                }
+            }
+            return [s, e];
+        }).filter(Boolean).filter(([s, e]) => e >= s);
+
+        if (validIntervals.length === 0) return null;
+
+        validIntervals.sort((a, b) => (b[1] - b[0]) - (a[1] - a[0]));
+        const [bestStart, bestEnd] = validIntervals[0];
+
+        const countMap = {};
+        for (let idx = bestStart; idx <= bestEnd; idx++) {
+            const nm = points_nm_map[idx];
+            const thr = thresholdMap[nm];
+            if (thr !== undefined) {
+                countMap[thr] = (countMap[thr] || 0) + 1;
+            }
         }
+        let bestThreshold = null, maxCount = -1;
+        for (const [thr, cnt] of Object.entries(countMap)) {
+            if (cnt > maxCount) {
+                maxCount = cnt;
+                bestThreshold = Number(thr);
+            }
+        }
+
+        return {
+            interval: [bestStart, bestEnd],
+            threshold: bestThreshold
+        };
     }
-
-    return {
-        interval: [bestStart, bestEnd],
-        threshold: bestThreshold
-    };
-}
-
 
 
     function findLongestBelowThresholdInterval() {
@@ -5859,7 +5844,6 @@
 
 
 </script>
-
 
 
 </body>

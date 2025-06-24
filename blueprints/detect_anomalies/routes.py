@@ -84,7 +84,7 @@ def andri():
     result = andri_scoring(data, flags, params)
 
     if isinstance(result, dict):
-        # save_cache(CACHE_FILE_PATH4, result)
+        save_cache(CACHE_FILE_PATH4, result)
         return jsonify(result)
     else:
         return result
