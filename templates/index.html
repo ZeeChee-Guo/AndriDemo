@@ -705,7 +705,7 @@
                         <label for="exampleDataSelect" class="form-label fs-4">Use an Example Dataset</label>
                         <select class="form-select fs-4" id="exampleDataSelect">
                             <option value="" selected disabled>Please select</option>
-                            <option value="Weather.arff">Weather</option>
+                            <option value="Weather.csv">Weather</option>
                             <option value="Repeat_ECG.arff">Repeat ECG</option>
                             <option value="Elec.arff">Electricity</option>
                         </select>
@@ -3349,7 +3349,7 @@
     function checkPossibleMislabeledPointsAndri(minIndex, lowBound, areas) {
         norm_a_intersect = [];
         flags_for_canceling_marked_labels = [];
-        const zoomRange = Math.round(2.5 * andri_sliding_window);
+        const zoomRange = Math.round(1.1 * andri_sliding_window);
 
         flags_for_canceling_marked_labels = flags.map((flag, idx) => {
             if (flag === 1 && globalScores[idx] < lowBound &&

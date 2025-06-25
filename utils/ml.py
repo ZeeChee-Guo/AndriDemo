@@ -195,9 +195,7 @@ def compute_andri_scores(data_arr, param_list):
         data_arr,
         y=None,
         online=False,
-        training_len=int(0.2*N),
         stepwise=True,
-        min_size=0.025
     )
     score = clf.scores
     score = MinMaxScaler(feature_range=(0, 1)).fit_transform(score.reshape(-1, 1)).ravel()
@@ -373,7 +371,6 @@ def fit_user_labels(scores, flags, training_set):
 
 
     if len(active_idx) < 2:
-        print('剩下不到两个活跃成分:')
         for idx in active_idx:
             print(f"  mean: {means[idx]:.4f}, std: {stds[idx]:.4f}, weight: {weights[idx]:.4f}")
         return (
