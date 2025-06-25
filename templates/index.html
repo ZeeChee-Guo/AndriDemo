@@ -499,6 +499,10 @@
                     <th>MaxW</th>
                     <td id="andriMaxWTest">20</td>
                 </tr>
+                <tr>
+                    <th>MaxW</th>
+                    <td id="andriMinSizeTest">0.015</td>
+                </tr>
                 </tbody>
             </table>
 
@@ -824,6 +828,7 @@
                     </div>
                 </div>
 
+                <!-- AnDri -->
                 <div id="andriSection" class="p-3 rounded border mb-3 fs-5">
                     <div class="form-check form-switch mb-2">
                         <input class="form-check-input" type="checkbox" id="autoAndri" checked>
@@ -842,6 +847,11 @@
                     <div>
                         <label for="andriMaxWValue" class="form-label">Max W</label>
                         <input type="number" class="form-control" id="andriMaxWValue" placeholder="Enter max W"
+                               disabled>
+                    </div>
+                    <div>
+                        <label for="andriMinSize" class="form-label">R min</label>
+                        <input type="number" class="form-control" id="andriMinSize" placeholder="Enter R min"
                                disabled>
                     </div>
                 </div>
@@ -1030,6 +1040,7 @@
     let andri_normal_pattern = 0;
     let andri_max_w = 0;
     let andriKadj = 0;
+    let andriMinsize = 0;
     let andri_globalScores = [];
     let andri_founded_anomalies_indices = [];
 
@@ -2688,6 +2699,7 @@
     document.getElementById('autoAndri').addEventListener('change', function () {
         let disabled = this.checked;
         document.getElementById('andriMaxWValue').disabled = disabled;
+        document.getElementById('andriMinSize').disabled = disabled;
         document.getElementById('andriKadjValue').disabled = disabled;
         document.getElementById('andriSlidingWindowValue').disabled = disabled;
     })
@@ -2701,6 +2713,14 @@
     // =========================↓
     // auto-detect
     document.getElementById('optimizeHyperparametersBtn').addEventListener('click', function () {
+        algoSelect = document.getElementById('algorithmSelect').value;
+        const normaExists = {{ 'true' if norma_exists else 'false' }};
+        if (!normaExists && algoSelect === '0') {
+            alert("Please request access from the authors and place `norma.py` under `algorithms/norma/`.");
+            return
+        }
+
+
         const currentModal = bootstrap.Modal.getInstance(document.getElementById('autoDetectAnomaliesModal'));
         currentModal.hide();
 
@@ -2722,7 +2742,7 @@
         }, 7000);
 
 
-        algoSelect = document.getElementById('algorithmSelect').value;
+
         const url = algorithms_dict[algoSelect]['detect_url'];
 
         let hyperParameters = {};
@@ -2730,6 +2750,7 @@
             case '3':
                 hyperParameters['slidingWindow'] = document.getElementById('andriSlidingWindowValue').value.trim();
                 hyperParameters['max_W'] = document.getElementById('andriMaxWValue').value.trim();
+                hyperParameters['min_size'] = document.getElementById('andriMinSize').value.trim();
                 hyperParameters['Kadj'] = document.getElementById('andriKadjValue').value.trim();
                 break
             case '2':
@@ -2790,6 +2811,7 @@
                                 andri_normal_pattern = data.nms;
                                 andri_sliding_window = data.pattern_length;
                                 andriKadj = data.k_adj;
+                                andriMinsize = data.min_size;
                                 andri_max_w = data.max_w;
                                 flags = data.flags;
                                 initial_flags = flags.slice();
@@ -2879,6 +2901,7 @@
                                 andri_normal_pattern = data.nms;
                                 andri_sliding_window = data.pattern_length;
                                 andriKadj = data.k_adj;
+                                andriMinsize = data.min_size;
                                 andri_max_w = data.max_w;
                                 flags = initial_flags.slice();
                                 training_index_nm_map = getAndriTrainingSetIndexNMMap();
@@ -4723,6 +4746,7 @@
                 document.getElementById('andriSlidingWindowLengthTest').innerText = andri_sliding_window;
                 document.getElementById('andriKadjTest').innerText = andriKadj.toString();
                 document.getElementById('andriMaxWTest').innerText = andri_max_w.toString();
+                document.getElementById('andriMinSizeTest').innerText = andriMinsize.toString();
                 document.getElementById('nmBox1').style.borderColor = '#32c83c';
                 document.getElementById('nmBox2').style.borderColor = '#32c83c';
                 document.getElementById('nmBox0').style.borderColor = '#32c83c';

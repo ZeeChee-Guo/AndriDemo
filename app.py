@@ -9,7 +9,9 @@ register_blueprints(app)
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    norma_path = os.path.join(app.root_path, 'algorithms', 'norma', 'norma.py')
+    norma_exists = os.path.isfile(norma_path)
+    return render_template('index.html', norma_exists=norma_exists)
 
 
 if __name__ == '__main__':

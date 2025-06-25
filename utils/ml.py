@@ -24,7 +24,7 @@ def compute_global_scores(data_arr, training_set, param_list):
             "Please request `norma.py` from the author and place it at: algorithms/norma/norma.py"
         )
 
-    pattern_length = param_list.get('patternLength') or find_length(data_arr)
+    pattern_length = safe_int(param_list.get('patternLength'), find_length(data_arr))
 
     N = len(data_arr)
     is_train = np.zeros(N, dtype=bool)
@@ -85,9 +85,9 @@ def compute_global_scores(data_arr, training_set, param_list):
 
 @memory.cache
 def compute_training_set_sand_scores(data_arr, training_set, param_list):
-    batch_size = param_list.get('batch_size') or None
-    init_length = param_list.get('init_length') or None
-    slidingWindow = param_list.get('slidingWindow') or find_sand_length(data_arr)
+    batch_size = safe_int(param_list.get('batch_size'), None)
+    init_length = safe_int(param_list.get('init_length'), None)
+    slidingWindow = safe_int(param_list.get('slidingWindow'), find_sand_length(data_arr))
 
     N = len(data_arr)
     is_train = np.zeros(N, dtype=bool)
@@ -133,8 +133,8 @@ def compute_training_set_sand_scores(data_arr, training_set, param_list):
 
 @memory.cache
 def compute_training_set_damp_scores(data_arr, training_set, param_list):
-    m = param_list.get('m') or find_length(data_arr)
-    x_lag = param_list.get('xLag') or 2**int(np.ceil(np.log2( 8*m )))
+    m = safe_int(param_list.get('m'), find_length(data_arr))
+    x_lag = safe_int(param_list.get('xLag'), 2**int(np.ceil(np.log2( 8*m ))))
 
     N = len(data_arr)
     is_train = np.zeros(N, dtype=bool)
@@ -182,9 +182,10 @@ def compute_training_set_damp_scores(data_arr, training_set, param_list):
 
 @memory.cache
 def compute_andri_scores(data_arr, param_list):
-    slidingWindow = param_list.get('slidingWindow') or find_length(data_arr)
-    max_W = param_list.get('max_W') or 20
-    k_adj = param_list.get('Kadj') or 1
+    slidingWindow = safe_int(param_list.get('slidingWindow'), find_length(data_arr))
+    max_W = safe_int(param_list.get('max_W'), 20)
+    k_adj = safe_int(param_list.get('Kadj'), 1)
+    min_size = safe_float(param_list.get('min_size'), 0.025)
 
     N = len(data_arr)
     clf = AnDri(
@@ -196,6 +197,7 @@ def compute_andri_scores(data_arr, param_list):
         y=None,
         online=False,
         stepwise=True,
+        min_size=min_size,
     )
     score = clf.scores
     score = MinMaxScaler(feature_range=(0, 1)).fit_transform(score.reshape(-1, 1)).ravel()
@@ -214,7 +216,7 @@ def compute_andri_scores(data_arr, param_list):
         cl_s = np.append(cl_s, np.ones(N - len(cl_s)) * cl_s[-1])
     all_nm_indices = cl_s.astype(int)
 
-    return slidingWindow, all_scores, all_nm_indices, all_NM_subseqs, k_adj, max_W
+    return slidingWindow, all_scores, all_nm_indices, all_NM_subseqs, k_adj, max_W, min_size
 
 
 def andri_scoring(data, flags, param_list):
@@ -223,7 +225,7 @@ def andri_scoring(data, flags, param_list):
     flags[np.isin(flags, [1])] = 1
 
     data_arr = np.array(data, dtype=float).flatten()
-    pattern_length, global_scores, nm_indices, nms, k_adj, max_w = compute_andri_scores(data_arr, param_list)
+    pattern_length, global_scores, nm_indices, nms, k_adj, max_w, min_size = compute_andri_scores(data_arr, param_list)
 
     return {
         'global_scores': global_scores.tolist(),
@@ -233,6 +235,7 @@ def andri_scoring(data, flags, param_list):
         'nm_indices': nm_indices.tolist(),
         'k_adj': k_adj,
         'max_w': max_w,
+        'min_size': min_size,
     }
 
 
@@ -456,3 +459,21 @@ def fit_user_labels(scores, flags, training_set):
 
     return 1, [-1], means.tolist(), stds.tolist(), mean_active, std_active, weights.tolist()
 
+
+def safe_float(val, fallback):
+    try:
+        if val is not None and str(val).strip() != '':
+            return float(val)
+        else:
+            return fallback
+    except (ValueError, TypeError):
+        return fallback
+
+def safe_int(val, fallback):
+    try:
+        if val is not None and str(val).strip() != '':
+            return int(val)
+        else:
+            return fallback
+    except (ValueError, TypeError):
+        return fallback
