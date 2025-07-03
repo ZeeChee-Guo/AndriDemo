@@ -2569,6 +2569,11 @@
         document.getElementById('yesOrNoButtonsSection').classList.remove('d-none');
         document.getElementById('testSectionNMs').classList.add('d-none');
         document.getElementById('testSectionAnomalies').classList.add('d-none');
+        document.getElementById('resultTableSection').classList.add('d-none');
+        document.getElementById('hyperParameterSection').classList.add('d-none');
+        document.getElementById('algorithmTabs').classList.add('d-none');
+        document.getElementById('chart1').classList.remove('d-none');
+        document.getElementById('chart2').classList.remove('d-none');
         clickRangeScale = 4;
         process_step = -1;
         document.getElementById('autoDetectSection').classList.remove('mt-4');
@@ -3406,6 +3411,7 @@
 
 
     function renderNormalPatternOnChart2(nm, startIndex, nmAlignIdx, rangeStart, rangeEnd, svg, showName) {
+        startIndex = rangeStart;
         const option = chart2.getOption();
         const xIndices = option.xAxis[0].data;
 
