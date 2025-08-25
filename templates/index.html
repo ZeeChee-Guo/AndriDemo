@@ -52,19 +52,6 @@
             overflow: hidden;
         }
 
-        .chart2-title {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            text-align: center;
-            font-weight: bold;
-            font-size: 2rem;
-            pointer-events: none;
-            z-index: 10;
-            background: transparent;
-        }
-
         .panel-container {
             width: 30%;
             height: 100%;
@@ -75,29 +62,11 @@
         }
 
 
-        .modal-xxl {
-            max-width: 90vw;
-            width: 85vw;
-        }
-
-        .upper-histogram {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            backface-visibility: hidden;
-        }
-
         .showNormalPattern {
             flex-direction: column;
             display: flex;
             align-items: center;
             justify-content: center;
-        }
-
-        .modal-backdrop.show {
-            opacity: 0.8;
         }
 
 
@@ -200,25 +169,6 @@
             grid-row: 5;
         }
 
-        #anomaly-ts-andri {
-            grid-row: 3;
-            grid-column: 1;
-        }
-
-        #anomaly-ts-norma {
-            grid-row: 3;
-            grid-column: 2;
-        }
-
-        #anomaly-ts-sand {
-            grid-row: 3;
-            grid-column: 3;
-        }
-
-        #anomaly-ts-damp {
-            grid-row: 3;
-            grid-column: 4;
-        }
 
         #anomaly-score-andri {
             grid-row: 4;
@@ -440,36 +390,41 @@
                style="background: white;">
             <thead class="table-light">
             <tr class="fs-3">
-                <th style="width: 22%;">Algorithm</th>
-                <th style="width: 26%;">Precision</th>
-                <th style="width: 26%;">Recall</th>
-                <th style="width: 26%;">F1-Score</th>
+                <th style="width: 19%;">Algorithm</th>
+                <th style="width: 19%;">Precision</th>
+                <th style="width: 19%;">Recall</th>
+                <th style="width: 24%;">F1-Score</th>
+                <th style="width: 19%;">AUC</th>
             </tr>
             </thead>
             <tbody>
             <tr>
                 <th>Andri</th>
-                <td id="andri-precision" class="">-</td>
-                <td id="andri-recall" class="">-</td>
-                <td id="andri-f1" class="">-</td>
+                <td id="andri-precision">-</td>
+                <td id="andri-recall">-</td>
+                <td id="andri-f1">-</td>
+                <td id="andri-auc">-</td>
             </tr>
             <tr>
                 <th>NORMA</th>
-                <td id="norma-precision" class="fw-bold">-</td>
+                <td id="norma-precision">-</td>
                 <td id="norma-recall">-</td>
                 <td id="norma-f1">-</td>
+                <td id="norma-auc">-</td>
             </tr>
             <tr>
                 <th>SAND</th>
                 <td id="sand-precision">-</td>
                 <td id="sand-recall">-</td>
                 <td id="sand-f1">-</td>
+                <td id="sand-auc">-</td>
             </tr>
             <tr>
                 <th>DAMP</th>
                 <td id="damp-precision">-</td>
                 <td id="damp-recall">-</td>
                 <td id="damp-f1">-</td>
+                <td id="damp-auc">-</td>
             </tr>
             </tbody>
         </table>
@@ -500,7 +455,7 @@
                     <td id="andriMaxWTest">20</td>
                 </tr>
                 <tr>
-                    <th>MaxW</th>
+                    <th>R min</th>
                     <td id="andriMinSizeTest">0.015</td>
                 </tr>
                 </tbody>
@@ -738,8 +693,8 @@
                                 step="0.01"
                                 class="form-control fs-4"
                                 id="anomalyProportionInput"
-                                placeholder="0.1"
-                                value="0.1"
+                                placeholder="0.05"
+                                value="0.05"
                         >
 
                         <button type="button" class="btn btn-primary w-100 mt-3 fs-4" id="uploadDatasetBtn">Start
@@ -888,10 +843,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    let brushAreas = [{'start': 0, 'end': 10000}];
 
-
-    // let brushAreas = [];
+    // let brushAreas = [{'start': 0, 'end': 19999}];
+    let brushAreas = [];
 
 
     // flags: 0: unknown, 1: anomaly, 2: normal, 3: possible mislabeled points, 4: anomaly marked by system
@@ -1043,6 +997,7 @@
     let andriMinsize = 0;
     let andri_globalScores = [];
     let andri_founded_anomalies_indices = [];
+    let andri_auc = 0;
 
     // norma
     let norma_pattern_length = 0;
@@ -1051,6 +1006,7 @@
     let norm_a_threshold = 0;
     let norm_a_founded_anomalies_indices = [];
     let norm_scores = [];
+    let norm_a_auc = 0;
 
 
     // sand
@@ -1062,6 +1018,7 @@
     let sand_founded_anomalies_indices = [];
     let sand_threshold = 0;
     let sand_scores = [];
+    let sand_auc = 0;
 
 
     //damp
@@ -1072,6 +1029,7 @@
     let damp_normal_patterns = [];
     let damp_founded_anomalies_indices = [];
     let damp_scores = [];
+    let damp_auc = 0;
 
 
     // anomaly score distribution histogram
@@ -2747,7 +2705,6 @@
         }, 7000);
 
 
-
         const url = algorithms_dict[algoSelect]['detect_url'];
 
         let hyperParameters = {};
@@ -2779,6 +2736,7 @@
             data: fullData,
             flags: flags,
             areas: brushAreas,
+            baseline: baseline,
         };
 
 
@@ -2818,6 +2776,7 @@
                                 andriKadj = data.k_adj;
                                 andriMinsize = data.min_size;
                                 andri_max_w = data.max_w;
+                                andri_auc = data.auc;
                                 flags = data.flags;
                                 initial_flags = flags.slice();
                                 training_index_nm_map = getAndriTrainingSetIndexNMMap();
@@ -2832,6 +2791,7 @@
                                 flags = data.flags;
                                 initial_flags = flags.slice();
                                 norm_scores = data.global_scores;
+                                norm_a_auc = data.auc;
                                 initTpFpPieChart();
                                 enableRevisePotentialMislabeledAnomaliesPhase();
                                 break
@@ -2843,6 +2803,7 @@
                                 sand_batch_size = data.batch_size;
                                 sand_init_length = data.init_length;
                                 flags = data.flags;
+                                sand_auc = data.auc;
                                 initial_flags = flags.slice();
                                 sand_scores = data.global_scores;
                                 initTpFpPieChart();
@@ -2859,6 +2820,7 @@
                                 damp_normal_patterns = sand_normal_patterns;
                                 damp_weights = sand_weights;
                                 damp_scores = data.global_scores;
+                                damp_auc = data.auc;
                                 initTpFpPieChart();
                                 enableRevisePotentialMislabeledAnomaliesPhase();
                                 break
@@ -2873,6 +2835,7 @@
                                 norm_a_weights = data.weights
                                 norma_pattern_length = data.pattern_length;
                                 flags = initial_flags.slice();
+                                norm_a_auc = data.auc;
                                 norm_scores = data.global_scores;
                                 enableRevisePotentialMislabeledAnomaliesPhase();
                                 break
@@ -2885,6 +2848,7 @@
                                 sand_init_length = data.init_length;
                                 flags = initial_flags.slice();
                                 sand_scores = data.global_scores;
+                                sand_auc = data.auc;
                                 enableRevisePotentialMislabeledAnomaliesPhase();
                                 break
                             case '2':
@@ -2897,6 +2861,7 @@
                                 damp_normal_patterns = sand_normal_patterns;
                                 damp_weights = sand_weights;
                                 damp_scores = data.global_scores;
+                                damp_auc = data.auc;
                                 enableRevisePotentialMislabeledAnomaliesPhase();
                                 break
                             case '3':
@@ -2906,6 +2871,7 @@
                                 andri_normal_pattern = data.nms;
                                 andri_sliding_window = data.pattern_length;
                                 andriKadj = data.k_adj;
+                                andri_auc = data.auc;
                                 andriMinsize = data.min_size;
                                 andri_max_w = data.max_w;
                                 flags = initial_flags.slice();
@@ -3439,10 +3405,11 @@
             legend: {
                 show: true,
                 orient: 'vertical',
-                right: '10%',
+                right: 0,
+                top: 0,
                 itemWidth: 20,
                 itemHeight: 20,
-                textStyle: {fontSize: 20, fontWeight: 'bold'},
+                textStyle: {fontSize: 26, fontWeight: 'bold'},
                 data: [
                     {name: 'Normal Pattern', icon: 'rect'},
                     {name: 'Candidates', icon: svg}
@@ -3840,10 +3807,10 @@
     function finalTest() {
         let TP = 0, FP = 0, FN = 0;
         let algoIds = [
-            ["norma-precision", "norma-recall", "norma-f1"],
-            ["sand-precision", "sand-recall", "sand-f1"],
-            ["damp-precision", "damp-recall", "damp-f1"],
-            ["andri-precision", "andri-recall", "andri-f1"]
+            ["norma-precision", "norma-recall", "norma-f1", "norma-auc"],
+            ["sand-precision", "sand-recall", "sand-f1", "sand-auc"],
+            ["damp-precision", "damp-recall", "damp-f1", "damp-auc"],
+            ["andri-precision", "andri-recall", "andri-f1", "andri-auc"]
         ];
         switch (algoSelect) {
             case '3':
@@ -3895,12 +3862,12 @@
                 let f1_andri = 2 * precision_andri * recall_andri / (precision_andri + recall_andri);
 
 
-                let [precId_andri, recallId_andri, f1Id_andri] = algoIds[algoSelect];
+                let [precId_andri, recallId_andri, f1Id_andri, andri_auc_id] = algoIds[algoSelect];
 
                 document.getElementById(precId_andri).innerText = precision_andri.toFixed(3);
                 document.getElementById(recallId_andri).innerText = recall_andri.toFixed(3);
                 document.getElementById(f1Id_andri).innerText = f1_andri.toFixed(3);
-
+                document.getElementById(andri_auc_id).innerText = andri_auc.toFixed(3);
 
                 break
             case '0':
@@ -3915,11 +3882,13 @@
                 let precision = TP + FP === 0 ? 0 : TP / (TP + FP);
                 let recall = TP + FN === 0 ? 0 : TP / (TP + FN);
                 let f1 = precision + recall === 0 ? 0 : 2 * precision * recall / (precision + recall);
-                let [precId, recallId, f1Id] = algoIds[algoSelect];
+                let [precId, recallId, f1Id, norma_auc] = algoIds[algoSelect];
 
                 document.getElementById(precId).innerText = precision.toFixed(3);
                 document.getElementById(recallId).innerText = recall.toFixed(3);
                 document.getElementById(f1Id).innerText = f1.toFixed(3);
+                document.getElementById(norma_auc).innerText = norm_a_auc.toFixed(3);
+
                 break
             case '1':
                 for (let i = 0; i < baseline.length; i++) {
@@ -3933,11 +3902,13 @@
                 let precision_sand = TP + FP === 0 ? 0 : TP / (TP + FP);
                 let recall_sand = TP + FN === 0 ? 0 : TP / (TP + FN);
                 let f1_sand = precision_sand + recall_sand === 0 ? 0 : 2 * precision_sand * recall_sand / (precision_sand + recall_sand);
-                let [precId_sand, recallId_sand, f1Id_sand] = algoIds[algoSelect];
+                let [precId_sand, recallId_sand, f1Id_sand, sand_auc_id] = algoIds[algoSelect];
 
                 document.getElementById(precId_sand).innerText = precision_sand.toFixed(3);
                 document.getElementById(recallId_sand).innerText = recall_sand.toFixed(3);
                 document.getElementById(f1Id_sand).innerText = f1_sand.toFixed(3);
+                document.getElementById(sand_auc_id).innerText = sand_auc.toFixed(3);
+
                 break
             case '2':
                 for (let i = 0; i < baseline.length; i++) {
@@ -3951,11 +3922,13 @@
                 let precision_damp = TP + FP === 0 ? 0 : TP / (TP + FP);
                 let recall_damp = TP + FN === 0 ? 0 : TP / (TP + FN);
                 let f1_damp = precision_damp + recall_damp === 0 ? 0 : 2 * precision_damp * recall_damp / (precision_damp + recall_damp);
-                let [precId_damp, recallId_damp, f1Id_damp] = algoIds[algoSelect];
+                let [precId_damp, recallId_damp, f1Id_damp, damp_auc_id] = algoIds[algoSelect];
 
                 document.getElementById(precId_damp).innerText = precision_damp.toFixed(3);
                 document.getElementById(recallId_damp).innerText = recall_damp.toFixed(3);
                 document.getElementById(f1Id_damp).innerText = f1_damp.toFixed(3);
+                document.getElementById(damp_auc_id).innerText = damp_auc.toFixed(3);
+
                 break
 
 
@@ -5132,7 +5105,7 @@
                     icon: 'rect',
                     color: 'red',
                     textStyle: {
-                        fontSize: 20,
+                        fontSize: 28,
                         fontWeight: 'bold'
                     },
                     itemStyle: {
@@ -5442,7 +5415,7 @@
                     right: 0,
                     icon: 'rect',
                     textStyle: {
-                        fontSize: 20,
+                        fontSize: 28,
                         fontWeight: 'bold'
                     },
 

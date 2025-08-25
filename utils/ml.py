@@ -2,6 +2,7 @@ import numpy as np
 from joblib import Memory
 
 from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics import average_precision_score, roc_auc_score
 from sklearn.mixture import BayesianGaussianMixture
 import warnings
 import pandas as pd
@@ -15,7 +16,7 @@ memory = Memory(location="./norma_cache", verbose=0)
 
 
 @memory.cache
-def compute_global_scores(data_arr, training_set, param_list):
+def compute_global_scores(data_arr, training_set, param_list, baseline):
     try:
         from algorithms.norma.norma import NORMA
     except ModuleNotFoundError:
@@ -79,12 +80,14 @@ def compute_global_scores(data_arr, training_set, param_list):
             all_nm.extend(clf.normalmodel[0])
             all_nm_weights.extend(clf.normalmodel[1])
 
+    y_true = np.asarray(baseline, dtype=int).ravel()
+    roc_auc = float(roc_auc_score(y_true, scores_full))
 
-    return pattern_length, scores_full, all_nm, all_nm_weights
+    return pattern_length, scores_full, all_nm, all_nm_weights, roc_auc
 
 
 @memory.cache
-def compute_training_set_sand_scores(data_arr, training_set, param_list):
+def compute_training_set_sand_scores(data_arr, training_set, param_list, baseline):
     batch_size = safe_int(param_list.get('batch_size'), None)
     init_length = safe_int(param_list.get('init_length'), None)
     slidingWindow = safe_int(param_list.get('slidingWindow'), find_sand_length(data_arr))
@@ -127,14 +130,17 @@ def compute_training_set_sand_scores(data_arr, training_set, param_list):
             all_clusters.extend(clusters)
             all_weights.extend(weights)
 
+    y_true = np.asarray(baseline, dtype=int).ravel()
+    roc_auc = float(roc_auc_score(y_true, scores_full))
+
     return (slidingWindow, scores_full, [c.tolist() for c in all_clusters], [float(w) for w in all_weights],
-            init_length, batch_size)
+            init_length, batch_size, roc_auc)
 
 
 @memory.cache
-def compute_training_set_damp_scores(data_arr, training_set, param_list):
+def compute_training_set_damp_scores(data_arr, training_set, param_list, baseline):
     m = safe_int(param_list.get('m'), find_length(data_arr))
-    x_lag = safe_int(param_list.get('xLag'), 2**int(np.ceil(np.log2( 8*m ))))
+    x_lag = safe_int(param_list.get('xLag'), 2**int(np.ceil(np.log2(8 * m))))
 
     N = len(data_arr)
     is_train = np.zeros(N, dtype=bool)
@@ -164,7 +170,9 @@ def compute_training_set_damp_scores(data_arr, training_set, param_list):
         pad = (m - 1) // 2
 
         if raw_scores.size > 0:
-            damp_scores = MinMaxScaler(feature_range=(0, 1)).fit_transform(raw_scores.reshape(-1, 1)).ravel()
+            damp_scores = MinMaxScaler(feature_range=(0, 1)).fit_transform(
+                raw_scores.reshape(-1, 1)
+            ).ravel()
             left_pad = np.full(pad, damp_scores[0])
             right_pad = np.full(pad, damp_scores[-1])
             padded_scores = np.concatenate([left_pad, damp_scores, right_pad])
@@ -177,11 +185,14 @@ def compute_training_set_damp_scores(data_arr, training_set, param_list):
 
         scores_full[seg['start']:seg['end'] + 1] = padded_scores
 
-    return m, scores_full, [], [], x_lag
+    y_true = np.asarray(baseline, dtype=int).ravel()
+    roc_auc = float(roc_auc_score(y_true, scores_full))
+
+    return m, scores_full, [], [], x_lag, roc_auc
 
 
 @memory.cache
-def compute_andri_scores(data_arr, param_list):
+def compute_andri_scores(data_arr, param_list, baseline):
     slidingWindow = safe_int(param_list.get('slidingWindow'), find_length(data_arr))
     max_W = safe_int(param_list.get('max_W'), 20)
     k_adj = safe_int(param_list.get('Kadj'), 1)
@@ -192,13 +203,8 @@ def compute_andri_scores(data_arr, param_list):
         slidingWindow, 'zero-mean', linkage_method='ward', th_reverse=5, kadj=k_adj,
         nm_len=2, overlap=0, max_W=max_W, eta=1
     )
-    clf.fit(
-        data_arr,
-        y=None,
-        online=False,
-        stepwise=True,
-        min_size=min_size,
-    )
+    clf.fit(data_arr, y=None, online=False, stepwise=True, min_size=min_size)
+
     score = clf.scores
     score = MinMaxScaler(feature_range=(0, 1)).fit_transform(score.reshape(-1, 1)).ravel()
     if len(score) < N:
@@ -216,16 +222,20 @@ def compute_andri_scores(data_arr, param_list):
         cl_s = np.append(cl_s, np.ones(N - len(cl_s)) * cl_s[-1])
     all_nm_indices = cl_s.astype(int)
 
-    return slidingWindow, all_scores, all_nm_indices, all_NM_subseqs, k_adj, max_W, min_size
+    y_true = np.asarray(baseline, dtype=int).ravel()
+    roc_auc = float(roc_auc_score(y_true, all_scores))
+
+    return slidingWindow, all_scores, all_nm_indices, all_NM_subseqs, k_adj, max_W, min_size, roc_auc
 
 
-def andri_scoring(data, flags, param_list):
+def andri_scoring(data, flags, param_list, baseline):
     warnings.simplefilter("ignore", pd.errors.PerformanceWarning)
     flags = np.array(flags)
     flags[np.isin(flags, [1])] = 1
 
     data_arr = np.array(data, dtype=float).flatten()
-    pattern_length, global_scores, nm_indices, nms, k_adj, max_w, min_size = compute_andri_scores(data_arr, param_list)
+    pattern_length, global_scores, nm_indices, nms, k_adj, max_w, min_size, auc = compute_andri_scores(data_arr, param_list,
+                                                                                                  baseline)
 
     return {
         'global_scores': global_scores.tolist(),
@@ -236,17 +246,18 @@ def andri_scoring(data, flags, param_list):
         'k_adj': k_adj,
         'max_w': max_w,
         'min_size': min_size,
+        'auc': auc
     }
 
 
-def sand_scoring(data, flags, training_set, params):
+def sand_scoring(data, flags, training_set, params, baseline):
     warnings.simplefilter("ignore", pd.errors.PerformanceWarning)
     flags = np.array(flags)
     flags[np.isin(flags, [1])] = 1
 
     data_arr = np.array(data, dtype=float).flatten()
-    pattern_length, global_scores, nms, weights, init_length, batch_size = compute_training_set_sand_scores(
-        data_arr, training_set, params
+    pattern_length, global_scores, nms, weights, init_length, batch_size, auc = compute_training_set_sand_scores(
+        data_arr, training_set, params, baseline
     )
 
     return {
@@ -256,17 +267,18 @@ def sand_scoring(data, flags, training_set, params):
         'nms': nms,
         'weights': weights,
         'init_length': init_length,
-        'batch_size': batch_size
+        'batch_size': batch_size,
+        'auc': auc
     }
 
 
-def norm_a_scoring(data, flags, training_set, params):
+def norm_a_scoring(data, flags, training_set, params, baseline):
     warnings.simplefilter("ignore", pd.errors.PerformanceWarning)
     flags = np.array(flags)
     flags[np.isin(flags, [1])] = 1
 
     data_arr = np.array(data, dtype=float).flatten()
-    pattern_length, global_scores, nms, weights = compute_global_scores(data_arr, training_set, params)
+    pattern_length, global_scores, nms, weights, auc = compute_global_scores(data_arr, training_set, params, baseline)
 
     return {
         'global_scores': list(global_scores),
@@ -274,16 +286,18 @@ def norm_a_scoring(data, flags, training_set, params):
         'flags': list(map(int, flags)),
         'nms': nms,
         'weights': weights,
+        'auc': auc
     }
 
 
-def damp_scoring(data, flags, training_set, params):
+def damp_scoring(data, flags, training_set, params, baseline):
     warnings.simplefilter("ignore", pd.errors.PerformanceWarning)
     flags = np.array(flags)
     flags[np.isin(flags, [1])] = 1
 
     data_arr = np.array(data, dtype=float).flatten()
-    pattern_length, global_scores, nms, weights, x_lag = compute_training_set_damp_scores(data_arr, training_set, params)
+    pattern_length, global_scores, nms, weights, x_lag, auc = compute_training_set_damp_scores(data_arr, training_set,
+                                                                                               params, baseline)
 
     return {
         'global_scores': list(global_scores),
@@ -291,7 +305,8 @@ def damp_scoring(data, flags, training_set, params):
         'flags': list(map(int, flags)),
         'nms': nms,
         'weights': weights,
-        'x_lag': x_lag
+        'x_lag': x_lag,
+        'auc': auc
     }
 
 
